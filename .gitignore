@@ -1,0 +1,15 @@
+/.idea/
+/.npm/
+/.vscode/
+/.wireit/
+/dist/
+/lib/
+/node_modules/
+/tmp/
+
+/.DS_Store
+/.envrc
+/.env.local
+
+*.log
+*.tsbuildinfo

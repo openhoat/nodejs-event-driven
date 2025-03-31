@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "preset": "jest-preset",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "module": "ESNext",
+    "moduleResolution": "nodenext"
+  },
+  "exclude": []
+}

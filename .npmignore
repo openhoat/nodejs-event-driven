@@ -1,0 +1,15 @@
+/.idea/
+/.npm/
+/.vscode/
+/.wireit/
+/dist/
+/lib/test/
+/src/
+/tsconfig.json
+/tsconfig.*.json
+/.env.local
+/.env.test
+/.envrc
+/.gitignore
+/biome.json
+/src/test/jest.config.ts

@@ -1,0 +1,205 @@
+{
+  "name": "nodejs-event-driven",
+  "description": "NodeJS agnostic event driven with EventEmitter support",
+  "version": "0.0.1",
+  "author": "Olivier Penhoat <openhoat@gmail.com> (https://about.me/openhoat/)",
+  "license": {
+    "type": "MIT",
+    "url": "https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/LICENSE"
+  },
+  "homepage": "https://github.com/openhoat/nodejs-event-driven#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openhoat/nodejs-event-driven.git"
+  },
+  "bugs": {
+    "url": "https://github.com/openhoat/nodejs-event-driven/issues",
+    "email": "openhoat@gmail.com"
+  },
+  "type": "module",
+  "main": "./lib/main/index.js",
+  "files": ["./lib/main"],
+  "types": "./lib/main/index.d.ts",
+  "packageManager": "pnpm@10.6.4",
+  "engines": {
+    "node": "22.14.0",
+    "pnpm": "10.6.4"
+  },
+  "volta": {
+    "node": "22.14.0",
+    "pnpm": "10.6.4"
+  },
+  "scripts": {
+    "build": "wireit",
+    "build:all": "wireit",
+    "build:test": "wireit",
+    "build:transpile": "wireit",
+    "build:transpile:aliases": "wireit",
+    "build:transpile:test": "wireit",
+    "build:transpile:aliases:test": "wireit",
+    "check": "wireit",
+    "check:fix": "wireit",
+    "clean": "wireit",
+    "clean:all": "wireit",
+    "clean:npm": "wireit",
+    "clean:ts": "wireit",
+    "clean:wireit": "rimraf -v .wireit",
+    "dev": "wireit",
+    "format": "wireit",
+    "format:fix": "wireit",
+    "pack": "wireit",
+    "prepublishOnly": "pnpm run build",
+    "start": "node lib/test/demo-theater.js",
+    "test": "wireit",
+    "test:cover": "wireit",
+    "test:cover:open": "wireit",
+    "validate": "wireit"
+  },
+  "wireit": {
+    "build": {
+      "dependencies": ["build:transpile", "build:transpile:aliases"]
+    },
+    "build:all": {
+      "dependencies": ["build", "build:test"]
+    },
+    "build:test": {
+      "dependencies": ["build:transpile:test", "build:transpile:aliases:test"]
+    },
+    "build:transpile": {
+      "command": "tsc",
+      "files": ["src/main/**/*.ts", "*.json"],
+      "output": ["lib/main/**"],
+      "env": {
+        "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
+      }
+    },
+    "build:transpile:aliases": {
+      "command": "tsc-alias",
+      "dependencies": ["build:transpile"]
+    },
+    "build:transpile:test": {
+      "command": "tsc -p tsconfig.test.build.json",
+      "files": ["src/**", "*.json", "*.ts", "*.yaml"],
+      "output": ["lib/**"],
+      "env": {
+        "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
+      }
+    },
+    "build:transpile:aliases:test": {
+      "command": "tsc-alias",
+      "dependencies": ["build:transpile:test"],
+      "files": ["lib/**"]
+    },
+    "check": {
+      "command": "biome check .",
+      "files": ["src/**", "*.json", "*.ts", "*.yaml"],
+      "output": []
+    },
+    "check:fix": {
+      "command": "biome check --fix .",
+      "files": ["src/**", "*.json", "*.ts", "*.yaml"],
+      "output": []
+    },
+    "clean": {
+      "dependencies": ["clean:dist", "clean:lib", "clean:ts"]
+    },
+    "clean:all": {
+      "dependencies": ["clean", "clean:npm", "clean:wireit"]
+    },
+    "clean:dist": {
+      "command": "rimraf -v dist"
+    },
+    "clean:lib": {
+      "command": "rimraf -v lib"
+    },
+    "clean:npm": {
+      "command": "rimraf -v node_modules pnpm-lock.yaml",
+      "dependencies": ["clean:npm:cache"]
+    },
+    "clean:npm:cache": {
+      "command": "rimraf -v .npm"
+    },
+    "clean:ts": {
+      "command": "rimraf -v -g '**/*.tsbuildinfo'"
+    },
+    "dev": {
+      "command": "tsx src/test/demo-theater.ts",
+      "env": {
+        "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
+      }
+    },
+    "format": {
+      "command": "biome format .",
+      "files": ["src/**", "*.json", "*.ts", "*.yaml"]
+    },
+    "format:fix": {
+      "command": "biome format --fix .",
+      "files": ["src/**", "*.json", "*.ts", "*.yaml"]
+    },
+    "pack": {
+      "dependencies": ["pack:create", "pack:untar"]
+    },
+    "pack:create": {
+      "command": "pnpm pack --pack-destination dist",
+      "dependencies": ["build"],
+      "files": ["package.json", "pnpm-lock.yaml", "README.md", "lib/main/**"],
+      "output": ["dist/nodejs-event-driven-*.tgz"]
+    },
+    "pack:untar": {
+      "command": "tar -xvf dist/nodejs-event-driven-0.0.1.tgz -C dist",
+      "dependencies": ["pack:create"],
+      "files": ["dist/nodejs-event-driven-*.tgz"],
+      "output": ["dist/package/**"]
+    },
+    "test": {
+      "command": "jest -c src/test/jest.config.ts",
+      "files": ["src/**", "*.json", "*.ts", "*.yaml"],
+      "env": {
+        "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
+      }
+    },
+    "test:cover": {
+      "command": "jest --coverage -c src/test/jest.config.ts",
+      "files": ["src/**", "*.json", "*.ts", "*.yaml"],
+      "env": {
+        "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
+      }
+    },
+    "test:cover:open": {
+      "command": "open-cli dist/coverage/index.html",
+      "env": {
+        "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
+      }
+    },
+    "validate": {
+      "dependencies": ["build:all", "check", "test:cover"]
+    }
+  },
+  "dependencies": {
+    "dotenv": "16.4.7",
+    "pino": "9.6.0",
+    "proper-lockfile": "4.1.2",
+    "wireit": "0.14.11"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@jest/globals": "29.7.0",
+    "@types/amqplib": "0.10.7",
+    "@types/node": "22.14.0",
+    "@types/proper-lockfile": "4.1.4",
+    "jest": "29.7.0",
+    "open-cli": "8.0.0",
+    "pino-pretty": "13.0.0",
+    "rimraf": "6.0.1",
+    "ts-jest": "29.3.1",
+    "ts-node": "10.9.2",
+    "tsc-alias": "1.8.13",
+    "tsx": "4.19.3",
+    "typescript": "5.8.3",
+    "valibot": "1.0.0"
+  },
+  "optionalDependencies": {
+    "amqplib": "0.10.7",
+    "redis": "4.7.0"
+  }
+}

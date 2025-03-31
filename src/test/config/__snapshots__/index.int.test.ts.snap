@@ -1,0 +1,21 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`integration tests config should provide a configuration object based on environment variables 1`] = `
+{
+  "eventBusFsBaseDataDir": "./tmp/test-events-data",
+  "eventBusFsPollingDelayMs": 100,
+  "eventBusMemoryEmitDelay": 0,
+  "eventBusType": "memory",
+  "logLevel": "silent",
+}
+`;
+
+exports[`integration tests config should provide a configuration object based on environment variables given process.env.VERBOSE is true 1`] = `
+{
+  "eventBusFsBaseDataDir": "./tmp/test-events-data",
+  "eventBusFsPollingDelayMs": 100,
+  "eventBusMemoryEmitDelay": 0,
+  "eventBusType": "memory",
+  "logLevel": "silent",
+}
+`;

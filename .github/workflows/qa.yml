@@ -1,0 +1,29 @@
+name: QA
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  qa:
+    name: QA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install PNPM dependencies
+        uses: ./.github/actions/pnpm-install
+      - name: Validate project
+        run: pnpm run validate
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./dist/coverage
+          files: cobertura-coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: openhoat/nodejs-event-driven
+          verbose: true
