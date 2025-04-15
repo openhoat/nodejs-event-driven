@@ -1,3 +1,4 @@
+[![npm](https://img.shields.io/badge/NPM-nodejs_event_driven-blue)](https://www.npmjs.com/package/nodejs-event-driven)
 [![codecov](https://codecov.io/gh/openhoat/nodejs-event-driven/graph/badge.svg?token=3LKLOU6TWJ)](https://codecov.io/gh/openhoat/nodejs-event-driven)
 
 ## NodeJS Event Driven
@@ -79,33 +80,52 @@ Object used in `EventBusService` constructor to pass configuration.
 
 Configuration properties:
 
-- `type` (required): type of event bus.
+- `type` (required): Type of event bus.
 
   Supported values:
-    - `memory` (default): in memory, without persistence.
-    - `fs`: file system.
+    - `memory` (default): In memory, without persistence.
+    - `fs`: File system.
     - `redis`: Redis queue.
     - `rabbitmq`: RabbitMQ.
-- `logger` (default:no log): any logger implementation implementing [Logger](https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/src/main/util/logger.ts) interface.
+- `logger` (default:no log): Any logger implementation implementing [Logger](https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/src/main/util/logger.ts) interface.
 
-> All others properties depend on `type` value, matching following specs:
+> All others properties depend on `type` value, matching the following specs:
 
 #### `memory`
 
-- `eventBusMemoryEmitDelay` (default:0): duration used to wait (in ms) before sending events.
+- `eventBusMemoryEmitDelay` (default:0): Duration used to wait (in ms) before sending events.
 
 #### `fs`
 
-- `eventBusFsBaseDataDir` (default: `/tmp/fs-event-bus`): base directory used to persist events file structure.
-- `eventBusFsPollingDelayMs` (default: 0): delay of events files polling.
+- `eventBusFsBaseDataDir` (default: `/tmp/fs-event-bus`): Base directory used to persist events file structure.
+- `eventBusFsPollingDelayMs` (default: 0): Delay of events files polling.
 
 #### `redis`
 
-- `keyPrefix` (default: `events`): key prefix used to store events in Redis.
+- `keyPrefix` (default: `events`): Key prefix used to store events in Redis.
 - `url` (default: redis default): Redis host URL to connect with.
+
+  See [Redis documentation](https://github.com/redis/node-redis) for more information about other configuration properties:
+- `database`: Redis database number.
+- `name`: Client name.
+- `password`: ACL password.
+- `username`: ACL username.
 
 #### `rabbitmq`
 
 - `url` (default: rabbitmq default): RabbitMQ host URL to connect with.
+
+### Prerequisite
+
+- Install `redis` NPM dependency to be able to use Redis with `nodejs-event-driven`.
+  ```shell
+  npm install redis
+  ```
+- Install `amqplib` NPM dependency to be able to use RabbitMQ with `nodejs-event-driven`.
+  ```shell
+  npm install amqplib
+  ```
+
+> `redis` and `amqplib` are declared as optional dependencies in `nodejs-event-driven`.
 
 Enjoy!
