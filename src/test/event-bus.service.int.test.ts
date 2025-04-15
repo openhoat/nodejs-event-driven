@@ -11,6 +11,7 @@ import type { RedisEventBusServiceConfig } from '@main/infra/event-bus/redis/red
 import { getTestLogger, testEventBus } from '@test/event-bus-test.helper.js'
 import { baseDir } from '@test/util/base-dir.js'
 import { waitFor } from '@test/util/helper.js'
+import { isPortOpen } from '@test/util/network-helper.js'
 import { rimraf } from 'rimraf'
 
 type TestSpec =
@@ -54,13 +55,29 @@ describe('integration testss', () => {
               eventBusFsPollingDelayMs: 20,
             },
           },
-          // { spec: { type: 'redis' } },
-          // { spec: { type: 'rabbitmq' } },
+          { spec: { type: 'redis' } },
+          { spec: { type: 'rabbitmq' } },
         ]
+        const isServerAvailable = async (spec: TestSpec) => {
+          switch (spec.type) {
+            case 'redis':
+              return isPortOpen(6379, { timeout: 500 })
+            case 'rabbitmq':
+              return isPortOpen(5672, { timeout: 500 })
+            default:
+              return true
+          }
+        }
         test.each(testcases)(
           'should receive messages given $spec',
           async ({ spec }) => {
             // Given
+            if (!(await isServerAvailable(spec))) {
+              console.warn(
+                `Skipping test because ${spec.type} port is not opened`,
+              )
+              return
+            }
             eventBus = new EventBusService({
               ...spec,
               logger: getTestLogger(),
@@ -73,6 +90,12 @@ describe('integration testss', () => {
             'should send a message and wait for response given $spec',
             async ({ spec }) => {
               // Given
+              if (!(await isServerAvailable(spec))) {
+                console.warn(
+                  `Skipping test because ${spec.type} port is not opened`,
+                )
+                return
+              }
               eventBus = new EventBusService({
                 ...spec,
                 logger: getTestLogger(),
@@ -97,6 +120,12 @@ describe('integration testss', () => {
             'should send a message and wait for error given $spec',
             async ({ spec }) => {
               // Given
+              if (!(await isServerAvailable(spec))) {
+                console.warn(
+                  `Skipping test because ${spec.type} port is not opened`,
+                )
+                return
+              }
               const expectedError = new Error('bad things happened!')
               eventBus = new EventBusService({
                 ...spec,

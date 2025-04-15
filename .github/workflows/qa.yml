@@ -26,4 +26,3 @@ jobs:
           files: cobertura-coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: openhoat/nodejs-event-driven
-          verbose: true

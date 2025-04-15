@@ -3,9 +3,13 @@ import type { Logger } from '@main/util/logger.js'
 import { type RedisClientType, createClient } from 'redis'
 
 export type RedisEventBusServiceConfig = {
-  logger?: Logger
+  database?: number
   keyPrefix?: string
+  name?: string
+  logger?: Logger
+  password?: string
   url?: string
+  username?: string
 }
 
 export default class RedisEventBusService<
@@ -20,9 +24,8 @@ export default class RedisEventBusService<
     super()
     this.#logger = config.logger
     this.#keyPrefix = config.keyPrefix ?? 'events'
-    const redisOptions = config.url ? { url: config.url } : undefined
-    this.#redisPublisher = createClient(redisOptions)
-    this.#redisSubscriber = createClient(redisOptions)
+    this.#redisPublisher = createClient(config)
+    this.#redisSubscriber = createClient(config)
   }
 
   #createRedisListener<T>(

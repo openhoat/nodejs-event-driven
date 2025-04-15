@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import type { EventBusServiceConfig } from '@main/event-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
-import config from '@test/config/index.js'
+import config from '@test/config/config.js'
 import BookingService from '@test/domain/theater/event-bus/booking.service.js'
 import InventoryService from '@test/domain/theater/event-bus/inventory.service.js'
 import TheaterEventBusService from '@test/domain/theater/event-bus/theater-event-bus.service.js'

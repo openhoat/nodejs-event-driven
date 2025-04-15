@@ -1,5 +1,5 @@
 import RabbitmqEventBusService from '@main/infra/event-bus/rabbitmq/rabbitmq-event-bus.service.js'
-import config from '@test/config/index.js'
+import config from '@test/config/config.js'
 import {
   type PinoLoggerConfig,
   pinoLogger,

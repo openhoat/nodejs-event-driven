@@ -7,14 +7,14 @@ describe('integration tests', () => {
     })
     test('should provide a configuration object based on environment variables', async () => {
       // When
-      const { default: config } = await import('@test/config/index.js')
+      const { default: config } = await import('@test/config/config.js')
       // Then
       expect(config).toMatchSnapshot()
     })
     test('should provide a configuration object based on environment variables given process.env.VERBOSE is true', async () => {
       // When
       process.env.VERBOSE = 'true'
-      const { default: config } = await import('@test/config/index.js')
+      const { default: config } = await import('@test/config/config.js')
       // Then
       expect(config).toMatchSnapshot()
     })

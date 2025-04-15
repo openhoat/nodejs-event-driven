@@ -1,4 +1,4 @@
-import config from '@test/config/index.js'
+import config from '@test/config/config.js'
 import {
   type PinoLoggerConfig,
   pinoLogger,
