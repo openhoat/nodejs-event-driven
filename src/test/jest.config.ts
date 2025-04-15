@@ -9,7 +9,7 @@ export const isVerbose = VERBOSE === 'true'
 const config: JestConfig = {
   collectCoverageFrom: ['<rootDir>/src/main/**'],
   coverageDirectory: '<rootDir>/dist/coverage',
-  coverageReporters: isCi ? ['text', 'cobertura'] : ['text', 'html'],
+  coverageReporters: isCi ? ['text', 'cobertura', 'lcov'] : ['text', 'html'],
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',

@@ -12,4 +12,5 @@
 /.envrc
 /.gitignore
 /biome.json
+/sonar
 /src/test/jest.config.ts
