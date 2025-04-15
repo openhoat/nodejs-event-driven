@@ -1,12 +1,9 @@
 {
   "name": "nodejs-event-driven",
   "description": "NodeJS agnostic event driven with EventEmitter support",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Olivier Penhoat <openhoat@gmail.com> (https://about.me/openhoat/)",
-  "license": {
-    "type": "MIT",
-    "url": "https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/LICENSE"
-  },
+  "license": "MIT",
   "homepage": "https://github.com/openhoat/nodejs-event-driven#readme",
   "repository": {
     "type": "git",
@@ -208,6 +205,7 @@
     "@types/redis": "4.0.11",
     "dotenv-cli": "8.0.0",
     "jest": "29.7.0",
+    "jest-junit": "16.0.0",
     "open-cli": "8.0.0",
     "pino-pretty": "13.0.0",
     "rimraf": "6.0.1",

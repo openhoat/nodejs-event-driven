@@ -19,6 +19,12 @@ jobs:
         uses: ./.github/actions/pnpm-install
       - name: Validate project
         run: pnpm run validate
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./dist/tests
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:

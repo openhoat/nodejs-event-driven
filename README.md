@@ -1,5 +1,6 @@
 [![npm](https://img.shields.io/badge/NPM-nodejs_event_driven-blue)](https://www.npmjs.com/package/nodejs-event-driven)
 [![codecov](https://codecov.io/gh/openhoat/nodejs-event-driven/graph/badge.svg?token=3LKLOU6TWJ)](https://codecov.io/gh/openhoat/nodejs-event-driven)
+![Quality Gate Status](https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/sonar/qa.svg)
 
 ## NodeJS Event Driven
 
@@ -14,6 +15,17 @@ Features:
 ### How it works
 
 Simply instantiate an `EventBusService` and use it as an `EventEmitter` to publish or subscribe events.
+
+Example:
+
+```js
+const bus = new EventBusService({ type: 'memory' })
+await bus.start()
+bus.on('hello', (data) => {
+  console.log('data:', data)
+})
+bus.send('hello', 'world!')
+```
 
 ### Getting started
 
@@ -44,20 +56,20 @@ Simply instantiate an `EventBusService` and use it as an `EventEmitter` to publi
         type: 'memory',
         logger,
       }
-      const eventBusService = new EventBusService(config)
+      const bus = new EventBusService(config)
       try {
-        await eventBusService.start()
+        await bus.start()
         await new Promise((resolve) => {
-          eventBusService.once('foo', (data) => {
+          bus.once('foo', (data) => {
             logger.info(`received event "foo": ${String(data)}.`)
             resolve()
           })
           logger.info('sending event "foo"…')
-          eventBusService.send('foo', 'bar')
+          bus.send('foo', 'bar')
           logger.info('event "foo" sent.')
         })
       } finally {
-        await eventBusService.stop()
+        await bus.stop()
       }
     }
     

@@ -9,7 +9,7 @@ export const isVerbose = VERBOSE === 'true'
 const config: JestConfig = {
   collectCoverageFrom: ['<rootDir>/src/main/**'],
   coverageDirectory: '<rootDir>/dist/coverage',
-  coverageReporters: isCi ? ['text', 'cobertura', 'lcov'] : ['text', 'html'],
+  coverageReporters: isCi ? ['text', 'cobertura'] : ['text', 'html', 'lcov'],
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
@@ -22,6 +22,18 @@ const config: JestConfig = {
   setupFiles: ['<rootDir>/src/test/jest-setup.ts'],
   silent: !isVerbose,
   testMatch: ['<rootDir>/src/test/**/*.test.ts'],
+  reporters: isCi
+    ? [
+        'default',
+        [
+          'jest-junit',
+          {
+            classNameTemplate: '{filepath}',
+            outputDirectory: '<rootDir>/dist/tests',
+          },
+        ],
+      ]
+    : ['default'],
   transform: {
     '^.+\\.(t|j)s$': [
       'ts-jest',
