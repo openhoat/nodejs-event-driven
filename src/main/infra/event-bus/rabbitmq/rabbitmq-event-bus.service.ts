@@ -1,6 +1,7 @@
 import { BaseEventBusService } from '@main/base-event-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
-import amqp, { type Channel } from 'amqplib'
+import type { Channel, ChannelModel, ConsumeMessage } from 'amqplib'
+import type { Options } from 'amqplib/properties.js'
 
 export type RabbitmqEventBusServiceConfig = {
   logger?: Logger
@@ -10,14 +11,19 @@ export type RabbitmqEventBusServiceConfig = {
 export default class RabbitmqEventBusService<
   E extends string = string,
 > extends BaseEventBusService<E> {
+  static readonly DEFAULT_USERNAME: string = 'guest'
+  static readonly DEFAULT_PASSWORD: string = 'guest'
+  static readonly DEFAULT_URL =
+    `amqp://${RabbitmqEventBusService.DEFAULT_USERNAME}:${RabbitmqEventBusService.DEFAULT_PASSWORD}@localhost:5672`
+
   readonly #logger?: Logger
-  #connection?: amqp.ChannelModel
+  #connection: ChannelModel | null = null
   readonly #registeredChannel: Record<E, Channel> = {} as Record<E, Channel>
   readonly #url: string
 
   constructor(config: RabbitmqEventBusServiceConfig) {
     super()
-    this.#url = config.url ?? 'amqp://guest:guest@localhost:5672'
+    this.#url = config.url ?? RabbitmqEventBusService.DEFAULT_URL
     this.#logger = config.logger
   }
 
@@ -34,7 +40,7 @@ export default class RabbitmqEventBusService<
       (Object.keys(this.#registeredChannel) as E[]).map(async (eventName) => {
         const channel = this.#registeredChannel[eventName]
         await channel.cancel(eventName)
-        await this.off(eventName)
+        this.off(eventName)
       }),
     )
   }
@@ -50,7 +56,7 @@ export default class RabbitmqEventBusService<
   async #consumeQueue<T>(
     eventName: E,
     listener: (data: T) => void,
-    once?: boolean,
+    once = false,
   ) {
     if (once) {
       this.#logger?.debug(`register once listener for channel: ${eventName}`)
@@ -58,53 +64,55 @@ export default class RabbitmqEventBusService<
       this.#logger?.debug(`register listener for channel: ${eventName}`)
     }
     const channel = await this.#createChannel(eventName)
+    const consumeMsg = async (msg: ConsumeMessage) => {
+      if (once) {
+        await channel.cancel(eventName)
+      }
+      const data = JSON.parse(String(msg.content)) as T
+      this.#logger?.debug(`received event ${eventName}: ${String(data)}`)
+      listener(data)
+      return Promise.resolve()
+    }
     await channel.consume(
       eventName,
-      async (msg) => {
+      (msg) => {
         if (msg === null) {
           return
         }
-        if (once) {
-          await channel.cancel(eventName)
-        }
-        const data = JSON.parse(String(msg.content)) as T
-        this.#logger?.debug(`received event ${eventName}: ${String(data)}`)
-        listener(data)
-        return Promise.resolve()
+        void consumeMsg(msg)
       },
       { noAck: true, consumerTag: eventName },
     )
   }
 
-  async on<T>(eventName: E, listener: (data: T) => void) {
-    await this.#consumeQueue(eventName, listener)
+  on<T>(eventName: E, listener: (data: T) => void) {
+    void this.#consumeQueue(eventName, listener)
   }
 
-  async once<T>(eventName: E, listener: (data: T) => void) {
-    await this.#consumeQueue(eventName, listener, true)
+  once<T>(eventName: E, listener: (data: T) => void) {
+    void this.#consumeQueue(eventName, listener, true)
   }
 
-  async off(eventName: E) {
+  off(eventName: E) {
     const channel = this.#registeredChannel[eventName]
     if (!channel) {
-      return Promise.resolve()
+      return
     }
     delete this.#registeredChannel[eventName]
-    try {
-      this.#logger?.debug(`closing channel ${eventName}`)
-      await channel.close()
-    } catch (err) {
+    this.#logger?.debug(`closing channel ${eventName}`)
+    void channel.close().catch((err) => {
       const error = err as Error
       this.#logger?.warn(
         `Error while trying to close channel for event: ${eventName}: ${error.message}`,
       )
-    }
+    })
   }
 
-  async send(eventName: E, data?: unknown) {
-    const channel = await this.#createChannel(eventName)
-    this.#logger?.debug(`sending ${String(data)} to channel ${eventName}`)
-    channel.sendToQueue(eventName, Buffer.from(JSON.stringify(data)))
+  send(eventName: E, data?: unknown) {
+    void this.#createChannel(eventName).then((channel) => {
+      this.#logger?.debug(`sending ${String(data)} to channel ${eventName}`)
+      channel.sendToQueue(eventName, Buffer.from(JSON.stringify(data)))
+    })
   }
 
   sendAndWait<T>(
@@ -125,7 +133,15 @@ export default class RabbitmqEventBusService<
   }
 
   async start() {
-    this.#connection = await amqp.connect(this.#url)
+    const {
+      connect,
+    }: {
+      connect: (
+        url: string | Options.Connect,
+        socketOptions?: unknown,
+      ) => Promise<ChannelModel>
+    } = await import('amqplib')
+    this.#connection = await connect(this.#url)
   }
 
   async stop() {
@@ -133,7 +149,7 @@ export default class RabbitmqEventBusService<
     const connection = this.#connection
     if (connection) {
       await connection.close()
-      this.#connection = undefined
+      this.#connection = null
     }
   }
 }

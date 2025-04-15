@@ -1,8 +1,10 @@
 import { EventEmitter } from 'node:events'
 import { writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { BaseEventBusService } from '@main/base-event-bus.service.js'
 import {
+  type FileWatcherConfig,
   createDirIfNeeded,
   createDirSyncIfNeeded,
   watchFiles,
@@ -18,9 +20,9 @@ export type FsEventBusServiceConfig = {
 export default class FsEventBusService<
   E extends string = string,
 > extends BaseEventBusService<E> {
-  static readonly defaultDataRootDir = '/tmp/fs-event-bus'
+  static readonly defaultDataRootDir = join(tmpdir(), 'fs-event-bus')
 
-  #abortController?: AbortController
+  #abortController: AbortController | null = null
   readonly #dataRootDir: string
   readonly #eventEmitter: EventEmitter
   readonly #logger?: Logger
@@ -89,7 +91,7 @@ export default class FsEventBusService<
       return Promise.resolve()
     }
     abortController.abort()
-    this.#abortController = undefined
+    this.#abortController = null
     return Promise.resolve()
   }
 
@@ -98,14 +100,15 @@ export default class FsEventBusService<
     await createDirIfNeeded(dataRootDir)
     const { signal } = abortController
     const watchPattern = /event-(\d+)\.data$/
-    const watcher = await watchFiles({
+    const watchConfig: FileWatcherConfig = {
+      signal,
       baseDir: dataRootDir,
       logger: this.#logger,
-      signal,
       fileType: 'json',
       filenamePattern: watchPattern,
       pollingDelayMs: this.#pollingDelayMs,
-    })
+    }
+    const watcher = await watchFiles(watchConfig)
     watcher.onFile((filePath, data) => {
       const eventName = basename(dirname(filePath))
       this.#logger?.debug(`sending event: ${eventName} with ${String(data)}`)

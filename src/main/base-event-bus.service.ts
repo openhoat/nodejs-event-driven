@@ -18,9 +18,9 @@ export abstract class BaseEventBusService<E extends string = string>
     data?: unknown,
   ): Promise<T> {
     return new Promise((resolve, reject) => {
-      const successListener = (data: T) => {
+      const successListener = (successData: T) => {
         this.off(errorEventName, errorListener)
-        resolve(data)
+        resolve(successData)
       }
       const errorListener = (errorMessage: string) => {
         this.off(successEventName, successListener)

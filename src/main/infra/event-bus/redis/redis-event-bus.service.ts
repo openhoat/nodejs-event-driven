@@ -1,6 +1,6 @@
 import { BaseEventBusService } from '@main/base-event-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
-import { type RedisClientType, createClient } from 'redis'
+import type { RedisClientType } from 'redis'
 
 export type RedisEventBusServiceConfig = {
   database?: number
@@ -15,57 +15,84 @@ export type RedisEventBusServiceConfig = {
 export default class RedisEventBusService<
   E extends string = string,
 > extends BaseEventBusService<E> {
+  static readonly DEFAULT_KEY_PREFIX = 'events'
+
   readonly #logger?: Logger
-  readonly #redisPublisher: RedisClientType
-  readonly #redisSubscriber: RedisClientType
+  #redisPublisher: RedisClientType | null = null
+  #redisSubscriber: RedisClientType | null = null
   readonly #keyPrefix: string
+  readonly #redisConfig: {
+    database?: number
+    keyPrefix: string
+    name?: string
+    logger?: Logger
+    password?: string
+    url?: string
+    username?: string
+  }
 
   constructor(config: RedisEventBusServiceConfig) {
     super()
     this.#logger = config.logger
-    this.#keyPrefix = config.keyPrefix ?? 'events'
-    this.#redisPublisher = createClient(config)
-    this.#redisSubscriber = createClient(config)
+    this.#keyPrefix =
+      config.keyPrefix ?? RedisEventBusService.DEFAULT_KEY_PREFIX
+    this.#redisConfig = { ...config, keyPrefix: this.#keyPrefix }
   }
 
   #createRedisListener<T>(
     eventName: E,
     listener: (data: T) => void,
-    once?: boolean,
+    once = false,
   ) {
     return (message: string) => {
       if (once) {
-        void this.off(eventName)
+        this.off(eventName)
       }
       const data = JSON.parse(message) as T
       listener(data)
     }
   }
 
-  async on<T>(eventName: E, listener: (data: T) => void) {
+  on<T>(eventName: E, listener: (data: T) => void) {
+    const redisSubscriber = this.#redisSubscriber
+    if (!redisSubscriber) {
+      return
+    }
     const channel = `${this.#keyPrefix}:${eventName}`
     this.#logger?.debug(`register listener for channel: ${channel}`)
     const redisListener = this.#createRedisListener(eventName, listener)
-    await this.#redisSubscriber.subscribe(channel, redisListener)
+    void redisSubscriber.subscribe(channel, redisListener)
   }
 
-  async once<T>(eventName: E, listener: (data: T) => void) {
+  once<T>(eventName: E, listener: (data: T) => void) {
+    const redisSubscriber = this.#redisSubscriber
+    if (!redisSubscriber) {
+      return
+    }
     const channel = `${this.#keyPrefix}:${eventName}`
     this.#logger?.debug(`register once listener for channel: ${channel}`)
     const redisListener = this.#createRedisListener(eventName, listener, true)
-    await this.#redisSubscriber.subscribe(channel, redisListener)
+    void redisSubscriber.subscribe(channel, redisListener)
   }
 
-  async off(eventName: E) {
+  off(eventName: E) {
+    const redisSubscriber = this.#redisSubscriber
+    if (!redisSubscriber) {
+      return
+    }
     const channel = `${this.#keyPrefix}:${eventName}`
     this.#logger?.debug(`unregister listener for channel: ${channel}`)
-    await this.#redisSubscriber.unsubscribe(channel)
+    void redisSubscriber.unsubscribe(channel)
   }
 
-  async send(eventName: E, data?: unknown) {
+  send(eventName: E, data?: unknown) {
+    const redisPublisher = this.#redisPublisher
+    if (!redisPublisher) {
+      return
+    }
     const channel = `${this.#keyPrefix}:${eventName}`
     this.#logger?.debug(`sending ${String(data)} to channel ${channel}`)
-    await this.#redisPublisher.publish(channel, JSON.stringify(data))
+    void redisPublisher.publish(channel, JSON.stringify(data))
   }
 
   sendAndWait<T>(
@@ -86,12 +113,23 @@ export default class RedisEventBusService<
   }
 
   async start() {
+    const { createClient } = await import('redis')
+    this.#redisPublisher = createClient(this.#redisConfig)
+    this.#redisSubscriber = createClient(this.#redisConfig)
     await this.#redisPublisher.connect()
     await this.#redisSubscriber.connect()
   }
 
   async stop() {
-    await this.#redisPublisher.quit()
-    await this.#redisSubscriber.quit()
+    const redisPublisher = this.#redisPublisher
+    if (redisPublisher) {
+      await redisPublisher.quit()
+      this.#redisPublisher = null
+    }
+    const redisSubscriber = this.#redisSubscriber
+    if (redisSubscriber) {
+      await redisSubscriber.quit()
+      this.#redisSubscriber = null
+    }
   }
 }
