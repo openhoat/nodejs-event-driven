@@ -1,15 +1,23 @@
-import { BaseEventBusService } from '@main/base-event-bus.service.js'
-import FsEventBusService, {
+import type {
+  BaseEventBusService,
+  BaseEventBusServiceBuilder,
+} from '@main/domain/event-bus/base-event-bus.service.js'
+import { EventEmitterBusService } from '@main/infra/event-bus/event-emitter/event-emitter-bus.service.js'
+import {
   type FsEventBusServiceConfig,
+  createFsEventBusService,
 } from '@main/infra/event-bus/fs/fs-event-bus.service.js'
-import MemoryEventBusService, {
+import {
   type MemoryEventBusServiceConfig,
+  createMemoryEventBusService,
 } from '@main/infra/event-bus/memory/memory-event-bus.service.js'
-import RabbitmqEventBusService, {
+import {
   type RabbitmqEventBusServiceConfig,
+  createRabbitmqEventBusService,
 } from '@main/infra/event-bus/rabbitmq/rabbitmq-event-bus.service.js'
-import RedisEventBusService, {
+import {
   type RedisEventBusServiceConfig,
+  createRedisEventBusService,
 } from '@main/infra/event-bus/redis/redis-event-bus.service.js'
 
 export type EventBusServiceConfig =
@@ -26,21 +34,25 @@ export type EventBusServiceConfig =
       type: 'rabbitmq'
     } & RabbitmqEventBusServiceConfig)
 
-export default class EventBusService<
+export class EventBusService<
   E extends string = string,
-> extends BaseEventBusService<E> {
+> extends EventEmitterBusService<E> {
   readonly #eventBusServiceImpl: BaseEventBusService
 
   constructor(config: EventBusServiceConfig) {
-    super()
-    if (config.type === 'fs') {
-      this.#eventBusServiceImpl = new FsEventBusService(config)
-    } else if (config.type === 'redis') {
-      this.#eventBusServiceImpl = new RedisEventBusService(config)
-    } else if (config.type === 'rabbitmq') {
-      this.#eventBusServiceImpl = new RabbitmqEventBusService(config)
-    } else {
-      this.#eventBusServiceImpl = new MemoryEventBusService(config)
+    super(config)
+    switch (config.type) {
+      case 'fs':
+        this.#eventBusServiceImpl = createFsEventBusService(config)
+        break
+      case 'redis':
+        this.#eventBusServiceImpl = createRedisEventBusService(config)
+        break
+      case 'rabbitmq':
+        this.#eventBusServiceImpl = createRabbitmqEventBusService(config)
+        break
+      default:
+        this.#eventBusServiceImpl = createMemoryEventBusService(config)
     }
   }
 
@@ -64,13 +76,15 @@ export default class EventBusService<
     sendEventName: E,
     successEventName: E,
     errorEventName: E,
-    data?: unknown,
+    data: unknown,
+    options?: { timeout?: number },
   ): Promise<T> {
     return this.#eventBusServiceImpl.sendAndWait(
       sendEventName,
       successEventName,
       errorEventName,
       data,
+      options,
     )
   }
 
@@ -82,3 +96,8 @@ export default class EventBusService<
     await this.#eventBusServiceImpl.stop()
   }
 }
+
+export const createEventBusService: BaseEventBusServiceBuilder<
+  EventBusServiceConfig,
+  EventBusService
+> = (config) => new EventBusService(config)

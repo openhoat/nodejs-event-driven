@@ -1,5 +1,5 @@
-import EventBusService from '@main/event-bus.service.js'
-import logger from '@test/util/logger.js'
+import { createEventBusService } from '@main/event-bus.service.js'
+import { getLogger } from '@test/logger.js'
 import BookingService from './booking.service.js'
 import InventoryService from './inventory.service.js'
 import NotificationService from './notification.service.js'
@@ -9,7 +9,8 @@ const availableSeats = 4
 const requestedSeats = 4
 
 const run = async () => {
-  const eventBus = new EventBusService({
+  const logger = getLogger()
+  const eventBus = createEventBusService({
     type: 'memory',
     logger,
   })

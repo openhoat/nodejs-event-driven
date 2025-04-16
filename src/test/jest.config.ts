@@ -37,7 +37,7 @@ const config: JestConfig = {
   transform: {
     '^.+\\.(t|j)s$': [
       'ts-jest',
-      { useESM: true, tsconfig: '<rootDir>/tsconfig.test.json' },
+      { useESM: true, tsconfig: '<rootDir>/src/test/tsconfig.test.json' },
     ],
   },
 }

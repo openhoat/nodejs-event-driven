@@ -1,4 +1,5 @@
-import { BaseEventBusService } from '@main/base-event-bus.service.js'
+import type { BaseEventBusServiceBuilder } from '@main/domain/event-bus/base-event-bus.service.js'
+import { EventEmitterBusService } from '@main/infra/event-bus/event-emitter/event-emitter-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
 import type { Channel, ChannelModel, ConsumeMessage } from 'amqplib'
 import type { Options } from 'amqplib/properties.js'
@@ -8,9 +9,9 @@ export type RabbitmqEventBusServiceConfig = {
   url?: string
 }
 
-export default class RabbitmqEventBusService<
+export class RabbitmqEventBusService<
   E extends string = string,
-> extends BaseEventBusService<E> {
+> extends EventEmitterBusService<E> {
   static readonly DEFAULT_USERNAME: string = 'guest'
   static readonly DEFAULT_PASSWORD: string = 'guest'
   static readonly DEFAULT_URL =
@@ -22,7 +23,7 @@ export default class RabbitmqEventBusService<
   readonly #url: string
 
   constructor(config: RabbitmqEventBusServiceConfig) {
-    super()
+    super(config)
     this.#url = config.url ?? RabbitmqEventBusService.DEFAULT_URL
     this.#logger = config.logger
   }
@@ -63,26 +64,30 @@ export default class RabbitmqEventBusService<
     } else {
       this.#logger?.debug(`register listener for channel: ${eventName}`)
     }
-    const channel = await this.#createChannel(eventName)
-    const consumeMsg = async (msg: ConsumeMessage) => {
-      if (once) {
-        await channel.cancel(eventName)
-      }
-      const data = JSON.parse(String(msg.content)) as T
-      this.#logger?.debug(`received event ${eventName}: ${String(data)}`)
-      listener(data)
-      return Promise.resolve()
-    }
-    await channel.consume(
-      eventName,
-      (msg) => {
-        if (msg === null) {
-          return
+    try {
+      const channel = await this.#createChannel(eventName)
+      const consumeMsg = async (msg: ConsumeMessage) => {
+        if (once) {
+          await channel.cancel(eventName)
         }
-        void consumeMsg(msg)
-      },
-      { noAck: true, consumerTag: eventName },
-    )
+        const data = JSON.parse(String(msg.content)) as T
+        this.#logger?.debug(`received event ${eventName}: ${String(data)}`)
+        listener(data)
+        return Promise.resolve()
+      }
+      await channel.consume(
+        eventName,
+        (msg) => {
+          if (msg === null) {
+            return
+          }
+          void consumeMsg(msg)
+        },
+        { noAck: true, consumerTag: eventName },
+      )
+    } catch (err) {
+      this.errorListener?.(err)
+    }
   }
 
   on<T>(eventName: E, listener: (data: T) => void) {
@@ -105,6 +110,7 @@ export default class RabbitmqEventBusService<
       this.#logger?.warn(
         `Error while trying to close channel for event: ${eventName}: ${error.message}`,
       )
+      this.errorListener?.(err)
     })
   }
 
@@ -113,23 +119,6 @@ export default class RabbitmqEventBusService<
       this.#logger?.debug(`sending ${String(data)} to channel ${eventName}`)
       channel.sendToQueue(eventName, Buffer.from(JSON.stringify(data)))
     })
-  }
-
-  sendAndWait<T>(
-    sendEventName: E,
-    successEventName: E,
-    errorEventName: E,
-    data?: unknown,
-  ): Promise<T> {
-    this.#logger?.debug(
-      `sending event ${sendEventName} and waiting for event ${successEventName}…`,
-    )
-    return super.sendAndWait(
-      sendEventName,
-      successEventName,
-      errorEventName,
-      data,
-    )
   }
 
   async start() {
@@ -153,3 +142,11 @@ export default class RabbitmqEventBusService<
     }
   }
 }
+export type RabbitmqEventBusServiceBuilder = BaseEventBusServiceBuilder<
+  RabbitmqEventBusServiceConfig,
+  RabbitmqEventBusService
+>
+
+export const createRabbitmqEventBusService: RabbitmqEventBusServiceBuilder = (
+  config,
+) => new RabbitmqEventBusService(config)

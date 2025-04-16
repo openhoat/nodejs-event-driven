@@ -1,7 +1,7 @@
-import type { ConfigSpecItem } from '@test/config/config-spec-item.type.js'
+import type { ConfigCustom } from '@test/util/config-builder.js'
 import * as v from 'valibot'
 
-export const ConfigSchema = v.object({
+const schema = v.object({
   eventBusFsBaseDataDir: v.optional(v.string()),
   eventBusFsPollingDelayMs: v.optional(v.number()),
   eventBusMemoryEmitDelay: v.optional(v.number()),
@@ -11,11 +11,9 @@ export const ConfigSchema = v.object({
   ),
 })
 
-export type Config = v.InferOutput<typeof ConfigSchema>
+export type Config = v.InferOutput<typeof schema>
 
-export type ConfigSpec = Partial<Record<keyof Config, ConfigSpecItem>>
-
-export const configSpec: ConfigSpec = {
+const custom: ConfigCustom<Config> = {
   eventBusFsPollingDelayMs: {
     transform: v.optional(
       v.pipe(
@@ -35,3 +33,5 @@ export const configSpec: ConfigSpec = {
     ),
   },
 }
+
+export const configSpec = { schema, custom }

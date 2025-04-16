@@ -9,6 +9,7 @@ import {
   test,
 } from '@jest/globals'
 import { baseDir } from '@test/util/base-dir.js'
+import { mockModule } from '@test/util/testing-helper.js'
 
 describe('unit tests', () => {
   describe('util', () => {
@@ -17,9 +18,9 @@ describe('unit tests', () => {
       let loadEnv: jest.Mock<(envName?: string) => void>
       beforeAll(async () => {
         dotenvConfigMock = jest.fn()
-        jest.doMock('dotenv', () => ({
+        mockModule('dotenv', {
           config: dotenvConfigMock,
-        }))
+        })
       })
       describe.each([{}, { verbose: true }])(
         'given VERBOSE is $verbose',

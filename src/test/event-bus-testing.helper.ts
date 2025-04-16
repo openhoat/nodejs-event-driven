@@ -1,10 +1,5 @@
 import { expect } from '@jest/globals'
-import type { BaseEventBusService } from '@main/base-event-bus.service.js'
-import { pinoLogger } from '@test/infra/logger/pino/pino-logger.js'
-import pretty from 'pino-pretty'
-
-export const getTestLogger = () =>
-  pinoLogger(pretty({ sync: true, minimumLevel: 'fatal' }))
+import type { BaseEventBusService } from '@main/domain/event-bus/base-event-bus.service.js'
 
 export const testEventBus = async (eventBus: BaseEventBusService) => {
   // Given

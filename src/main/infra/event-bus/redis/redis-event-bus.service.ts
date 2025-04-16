@@ -1,4 +1,5 @@
-import { BaseEventBusService } from '@main/base-event-bus.service.js'
+import type { BaseEventBusServiceBuilder } from '@main/domain/event-bus/base-event-bus.service.js'
+import { EventEmitterBusService } from '@main/infra/event-bus/event-emitter/event-emitter-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
 import type { RedisClientType } from 'redis'
 
@@ -12,9 +13,9 @@ export type RedisEventBusServiceConfig = {
   username?: string
 }
 
-export default class RedisEventBusService<
+export class RedisEventBusService<
   E extends string = string,
-> extends BaseEventBusService<E> {
+> extends EventEmitterBusService<E> {
   static readonly DEFAULT_KEY_PREFIX = 'events'
 
   readonly #logger?: Logger
@@ -32,7 +33,7 @@ export default class RedisEventBusService<
   }
 
   constructor(config: RedisEventBusServiceConfig) {
-    super()
+    super(config)
     this.#logger = config.logger
     this.#keyPrefix =
       config.keyPrefix ?? RedisEventBusService.DEFAULT_KEY_PREFIX
@@ -95,23 +96,6 @@ export default class RedisEventBusService<
     void redisPublisher.publish(channel, JSON.stringify(data))
   }
 
-  sendAndWait<T>(
-    sendEventName: E,
-    successEventName: E,
-    errorEventName: E,
-    data?: unknown,
-  ): Promise<T> {
-    this.#logger?.debug(
-      `sending event ${sendEventName} and waiting for event ${successEventName}…`,
-    )
-    return super.sendAndWait(
-      sendEventName,
-      successEventName,
-      errorEventName,
-      data,
-    )
-  }
-
   async start() {
     const { createClient } = await import('redis')
     this.#redisPublisher = createClient(this.#redisConfig)
@@ -133,3 +117,12 @@ export default class RedisEventBusService<
     }
   }
 }
+
+export type RedisEventBusServiceBuilder = BaseEventBusServiceBuilder<
+  RedisEventBusServiceConfig,
+  RedisEventBusService
+>
+
+export const createRedisEventBusService: RedisEventBusServiceBuilder = (
+  config,
+) => new RedisEventBusService(config)

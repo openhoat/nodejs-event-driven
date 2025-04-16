@@ -91,7 +91,7 @@
       "dependencies": ["build:transpile"]
     },
     "build:transpile:test": {
-      "command": "tsc -p tsconfig.test.build.json",
+      "command": "tsc -p src/test/tsconfig.json",
       "dependencies": ["build:transpile"],
       "files": ["src/**", "*.json", "*.ts", "*.yaml"],
       "output": ["lib/**"],
@@ -116,7 +116,7 @@
       "output": []
     },
     "clean": {
-      "dependencies": ["clean:dist", "clean:lib", "clean:ts", "clean:npm:cache"]
+      "dependencies": ["clean:dist", "clean:lib", "clean:ts"]
     },
     "clean:all": {
       "dependencies": ["clean", "clean:npm", "clean:wireit"]
@@ -132,7 +132,7 @@
       "dependencies": ["clean:npm:cache"]
     },
     "clean:npm:cache": {
-      "command": "rimraf -v '**/.npm'"
+      "command": "rimraf -v -g '**/.npm'"
     },
     "clean:ts": {
       "command": "rimraf -v -g '**/*.tsbuildinfo'"

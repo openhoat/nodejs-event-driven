@@ -1,8 +1,8 @@
-import { EventEmitter } from 'node:events'
 import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
-import { BaseEventBusService } from '@main/base-event-bus.service.js'
+import type { BaseEventBusServiceBuilder } from '@main/domain/event-bus/base-event-bus.service.js'
+import { EventEmitterBusService } from '@main/infra/event-bus/event-emitter/event-emitter-bus.service.js'
 import {
   type FileWatcherConfig,
   createDirIfNeeded,
@@ -17,66 +17,30 @@ export type FsEventBusServiceConfig = {
   eventBusFsPollingDelayMs?: number
 }
 
-export default class FsEventBusService<
+export class FsEventBusService<
   E extends string = string,
-> extends BaseEventBusService<E> {
+> extends EventEmitterBusService<E> {
   static readonly defaultDataRootDir = join(tmpdir(), 'fs-event-bus')
 
   #abortController: AbortController | null = null
   readonly #dataRootDir: string
-  readonly #eventEmitter: EventEmitter
-  readonly #logger?: Logger
   readonly #pollingDelayMs?: number
 
   constructor(config: FsEventBusServiceConfig) {
-    super()
-    this.#logger = config.logger
+    super(config)
     this.#pollingDelayMs = config.eventBusFsPollingDelayMs
-    this.#eventEmitter = new EventEmitter()
     this.#dataRootDir =
       config.eventBusFsBaseDataDir ?? FsEventBusService.defaultDataRootDir
   }
 
-  on<T>(eventName: E, listener: (data: T) => void) {
-    this.#logger?.debug(`register listener for event: ${eventName}`)
-    this.#eventEmitter.on(eventName, listener)
-  }
-
-  once<T>(eventName: E, listener: (data: T) => void) {
-    this.#logger?.debug(`register once listener for event: ${eventName}`)
-    this.#eventEmitter.once(eventName, listener)
-  }
-
-  off<T>(eventName: E, listener: (data: T) => void) {
-    this.#logger?.debug(`unregister listener for event: ${eventName}`)
-    this.#eventEmitter.off(eventName, listener)
-  }
-
   send(eventName: E, data?: unknown) {
-    this.#logger?.debug(`sending event: ${eventName} with ${String(data)}`)
+    this.logger?.debug(`sending event: ${eventName} with ${String(data)}`)
     const dataRootDir = this.#dataRootDir
     const eventFileBaseDir = join(dataRootDir, eventName)
     createDirSyncIfNeeded(eventFileBaseDir)
     const timestamp = process.hrtime.bigint()
     const eventFilePath = join(eventFileBaseDir, `event-${timestamp}.data`)
     void writeFile(eventFilePath, JSON.stringify(data), 'utf-8')
-  }
-
-  sendAndWait<T>(
-    sendEventName: E,
-    successEventName: E,
-    errorEventName: E,
-    data?: unknown,
-  ): Promise<T> {
-    this.#logger?.debug(
-      `sending event ${sendEventName} and waiting for event ${successEventName}…`,
-    )
-    return super.sendAndWait(
-      sendEventName,
-      successEventName,
-      errorEventName,
-      data,
-    )
   }
 
   async start() {
@@ -103,7 +67,7 @@ export default class FsEventBusService<
     const watchConfig: FileWatcherConfig = {
       signal,
       baseDir: dataRootDir,
-      logger: this.#logger,
+      logger: this.logger,
       fileType: 'json',
       filenamePattern: watchPattern,
       pollingDelayMs: this.#pollingDelayMs,
@@ -111,8 +75,16 @@ export default class FsEventBusService<
     const watcher = await watchFiles(watchConfig)
     watcher.onFile((filePath, data) => {
       const eventName = basename(dirname(filePath))
-      this.#logger?.debug(`sending event: ${eventName} with ${String(data)}`)
-      this.#eventEmitter.emit(eventName, data)
+      this.logger?.debug(`sending event: ${eventName} with ${String(data)}`)
+      this.eventEmitter.emit(eventName, data)
     })
   }
 }
+
+export type FsEventBusServiceBuilder = BaseEventBusServiceBuilder<
+  FsEventBusServiceConfig,
+  FsEventBusService
+>
+
+export const createFsEventBusService: FsEventBusServiceBuilder = (config) =>
+  new FsEventBusService(config)
