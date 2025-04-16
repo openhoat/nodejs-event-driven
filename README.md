@@ -1,10 +1,10 @@
-[![npm](https://img.shields.io/badge/NPM-nodejs_event_driven-blue)](https://www.npmjs.com/package/nodejs-event-driven)
+[![NPM Version](https://img.shields.io/npm/v/nodejs-event-driven)](https://www.npmjs.com/package/nodejs-event-driven)
 [![codecov](https://codecov.io/gh/openhoat/nodejs-event-driven/graph/badge.svg?token=3LKLOU6TWJ)](https://codecov.io/gh/openhoat/nodejs-event-driven)
 ![Quality Gate Status](https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/sonar/qa.svg)
 
 ## NodeJS Event Driven
 
-Purpose: provide an agnostic event driven solution using EventEmitter interface.
+Purpose: provide an agnostic event driven solution inspired by the simplicity of EventEmitter interface.
 
 Features:
 - In memory queue
@@ -109,7 +109,7 @@ Configuration properties:
 
 #### `fs`
 
-- `eventBusFsBaseDataDir` (default: `/tmp/fs-event-bus`): Base directory used to persist events file structure.
+- `eventBusFsBaseDataDir` (default: `{tmp-dir}/fs-event-bus`): Base directory used to persist events file structure.
 - `eventBusFsPollingDelayMs` (default: 0): Delay of events files polling.
 
 #### `redis`

@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import type { EventBusServiceConfig } from '@main/event-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
-import config from '@test/config/config.js'
+import { configSpec } from '@test/config.js'
 import BookingService from '@test/domain/theater/event-bus/booking.service.js'
 import InventoryService from '@test/domain/theater/event-bus/inventory.service.js'
 import TheaterEventBusService from '@test/domain/theater/event-bus/theater-event-bus.service.js'
@@ -10,23 +10,20 @@ import {
   type PinoLoggerConfig,
   pinoLogger,
 } from '@test/infra/logger/pino/pino-logger.js'
+import { buildConfig } from '@test/util/config-builder.js'
 
 const availableSeats = 20
 const requestedSeats = 16
 
 export const runTheaterDemo = async (
-  eventBusService: TheaterEventBusService,
+  bus: TheaterEventBusService,
   logger: Logger,
 ) => {
-  const inventoryService = new InventoryService(
-    logger,
-    availableSeats,
-    eventBusService,
-  )
-  const ticketingService = new TicketingService(logger, eventBusService)
-  const bookingService = new BookingService(logger, eventBusService)
+  const inventoryService = new InventoryService(logger, availableSeats, bus)
+  const ticketingService = new TicketingService(logger, bus)
+  const bookingService = new BookingService(logger, bus)
   try {
-    await eventBusService.start()
+    await bus.start()
     await inventoryService.start()
     await ticketingService.start()
     await bookingService.requestBooking(requestedSeats)
@@ -38,11 +35,12 @@ export const runTheaterDemo = async (
   } finally {
     await ticketingService.stop()
     await inventoryService.stop()
-    await eventBusService.stop()
+    await bus.stop()
   }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const config = buildConfig(configSpec)
   const pinoConfig: PinoLoggerConfig = {
     transport: {
       target: 'pino-pretty',
@@ -77,6 +75,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       type: 'memory',
     }
   }
-  const eventBusService = new TheaterEventBusService(eventBusConfig)
-  void runTheaterDemo(eventBusService, logger)
+  const bus = new TheaterEventBusService(eventBusConfig)
+  void runTheaterDemo(bus, logger)
 }

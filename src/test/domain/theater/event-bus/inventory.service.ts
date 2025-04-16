@@ -5,18 +5,18 @@ import TheaterEventName from '@test/domain/theater/event-bus/theater-event-name.
 
 export default class InventoryService implements Service {
   #availableSeats: number
-  readonly #eventBus: TheaterEventBusService
+  readonly #bus: TheaterEventBusService
   readonly #logger: Logger
   readonly #reserveInventoryListener: (numberOfSeats: number) => void
 
   constructor(
     logger: Logger,
     availableSeats: number,
-    eventBus: TheaterEventBusService,
+    bus: TheaterEventBusService,
   ) {
     this.#logger = logger
     this.#availableSeats = availableSeats
-    this.#eventBus = eventBus
+    this.#bus = bus
     this.#reserveInventoryListener = (numberOfSeats: number) => {
       this.reserveInventory(numberOfSeats)
     }
@@ -24,11 +24,11 @@ export default class InventoryService implements Service {
 
   reserveInventory(numberOfSeats: number) {
     if (this.#availableSeats < numberOfSeats) {
-      this.#eventBus.send(
+      this.#bus.send(
         TheaterEventName.RESERVE_INVENTORY_NO_MORE_SEAT,
         'No more seats available',
       )
-      this.#eventBus.send(
+      this.#bus.send(
         TheaterEventName.RESERVE_INVENTORY_ERROR,
         'No more seats available',
       )
@@ -37,14 +37,11 @@ export default class InventoryService implements Service {
     this.#availableSeats -= numberOfSeats
     this.#logger.info(`inventory reserved with ${numberOfSeats} seats!`)
     this.#logger.info(`remaining capacity: ${this.#availableSeats}`)
-    this.#eventBus.send(
-      TheaterEventName.INVENTORY_RESERVED,
-      this.#availableSeats,
-    )
+    this.#bus.send(TheaterEventName.INVENTORY_RESERVED, this.#availableSeats)
   }
 
   async start() {
-    this.#eventBus.on(
+    this.#bus.on(
       TheaterEventName.RESERVE_INVENTORY,
       this.#reserveInventoryListener,
     )
@@ -52,7 +49,7 @@ export default class InventoryService implements Service {
   }
 
   async stop() {
-    this.#eventBus.off(
+    this.#bus.off(
       TheaterEventName.RESERVE_INVENTORY,
       this.#reserveInventoryListener,
     )

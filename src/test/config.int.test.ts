@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals'
+import { configSpec } from '@test/config.js'
+import { buildConfig } from '@test/util/config-builder.js'
 
 describe('integration tests', () => {
   describe('config', () => {
@@ -7,14 +9,14 @@ describe('integration tests', () => {
     })
     test('should provide a configuration object based on environment variables', async () => {
       // When
-      const { default: config } = await import('@test/config/config.js')
+      const config = buildConfig(configSpec)
       // Then
       expect(config).toMatchSnapshot()
     })
     test('should provide a configuration object based on environment variables given process.env.VERBOSE is true', async () => {
       // When
       process.env.VERBOSE = 'true'
-      const { default: config } = await import('@test/config/config.js')
+      const config = buildConfig(configSpec)
       // Then
       expect(config).toMatchSnapshot()
     })

@@ -20,13 +20,13 @@ describe('integration testss', () => {
   describe('theater event bus service', () => {
     const sentEvents: { name: TheaterEventName; data: unknown }[] = []
     let bookingService: BookingService
-    let eventBus: TheaterEventBusService
+    let bus: TheaterEventBusService
     let inventoryService: InventoryService
     let logger: Logger
     let ticketingService: TicketingService
     beforeAll(async () => {
       logger = pinoLogger(pretty({ sync: true, minimumLevel: 'fatal' }))
-      eventBus = new TheaterEventBusService({
+      bus = new TheaterEventBusService({
         logger,
         type: 'memory',
       })
@@ -39,13 +39,13 @@ describe('integration testss', () => {
         TheaterEventName.PRINT_TICKET_ERROR,
       ]
       for (const name of eventNamesToListen) {
-        eventBus.on(name, (data) => {
+        bus.on(name, (data) => {
           sentEvents.push({ name, data })
         })
       }
-      bookingService = new BookingService(logger, eventBus)
-      ticketingService = new TicketingService(logger, eventBus)
-      await eventBus.start()
+      bookingService = new BookingService(logger, bus)
+      ticketingService = new TicketingService(logger, bus)
+      await bus.start()
       await ticketingService.start()
     })
     beforeEach(() => {
@@ -56,13 +56,13 @@ describe('integration testss', () => {
     })
     afterAll(async () => {
       await ticketingService.stop()
-      await eventBus.stop()
+      await bus.stop()
     })
     test('should resolve given a booking request of 16 seats and an inventory of 20 available seats', async () => {
       // Given
       const availableSeats = 20
       const requestedSeats = 16
-      inventoryService = new InventoryService(logger, availableSeats, eventBus)
+      inventoryService = new InventoryService(logger, availableSeats, bus)
       await inventoryService.start()
       // When
       await bookingService.requestBooking(requestedSeats)
@@ -90,7 +90,7 @@ describe('integration testss', () => {
       // Given
       const availableSeats = 4
       const requestedSeats = 5
-      inventoryService = new InventoryService(logger, availableSeats, eventBus)
+      inventoryService = new InventoryService(logger, availableSeats, bus)
       await inventoryService.start()
       const expectedErrorMessage = 'No more seats available'
       const expectedError = new Error(expectedErrorMessage)

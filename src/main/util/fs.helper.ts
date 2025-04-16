@@ -58,10 +58,7 @@ export const relativePathIsFile = async (
     if (!fileStat.isFile()) {
       return false
     }
-    if (filenamePattern && !filenamePattern.test(fileRelPath)) {
-      return false
-    }
-    return true
+    return !!filenamePattern?.test(fileRelPath)
   } catch (err) {
     const error = err as Error & { code?: string }
     if (error.code !== 'ENOENT') {
@@ -117,6 +114,51 @@ export type FileWatcherConfig = {
   signal?: AbortSignal
 }
 
+export const pollFile = async (
+  fileInfos: { timestamp: number; filePath: string; data: unknown }[],
+  filePath: string,
+  fileType?: 'json' | 'text',
+) => {
+  const timestampMatch = /event-(\d+)\.data$/.exec(filePath)
+  if (!timestampMatch) {
+    return Promise.resolve()
+  }
+  const timestamp = Number(timestampMatch[1])
+  let filePathRelease: (() => Promise<void>) | null = null
+  try {
+    filePathRelease = await lock(filePath)
+    const isJsonOrText = fileType === 'json' || fileType === 'text'
+    const readFileOptions: {
+      encoding?: BufferEncoding
+    } = {}
+    if (isJsonOrText) {
+      readFileOptions.encoding = 'utf-8'
+    }
+    const content: Buffer | string = await readFile(filePath, readFileOptions)
+    const isJson = fileType === 'json' && typeof content === 'string'
+    let data: unknown
+    if (isJson) {
+      data = JSON.parse(content)
+    } else {
+      data = content
+    }
+    fileInfos.push({ timestamp, filePath, data })
+    await unlink(filePath)
+  } catch (err) {
+    const error = err as Error & { code?: string }
+    if (error.code === 'ENOENT') {
+      console.warn(err)
+      return Promise.resolve()
+    }
+    throw err
+  } finally {
+    if (filePathRelease) {
+      await filePathRelease()
+    }
+  }
+  return Promise.resolve()
+}
+
 export const watchFiles = async (config: FileWatcherConfig) => {
   const {
     baseDir,
@@ -139,49 +181,12 @@ export const watchFiles = async (config: FileWatcherConfig) => {
       }
     }
   }
-  const pollFile = async (
-    fileInfos: { timestamp: number; filePath: string; data: unknown }[],
-    filePath: string,
-  ) => {
-    const timestampMatch = /event-(\d+)\.data$/.exec(filePath)
-    if (!timestampMatch) {
-      return Promise.resolve()
-    }
-    const timestamp = Number(timestampMatch[1])
-    let filePathRelease: (() => Promise<void>) | null = null
-    try {
-      filePathRelease = await lock(filePath)
-      const isJsonOrText = fileType === 'json' || fileType === 'text'
-      const readFileOptions: {
-        encoding?: BufferEncoding
-      } = {}
-      if (isJsonOrText) {
-        readFileOptions.encoding = 'utf-8'
-      }
-      const content: Buffer | string = await readFile(filePath, readFileOptions)
-      const isJson = fileType === 'json' && typeof content === 'string'
-      let data: unknown
-      if (isJson) {
-        data = JSON.parse(content)
-      } else {
-        data = content
-      }
-      fileInfos.push({ timestamp, filePath, data })
-      await unlink(filePath)
-    } finally {
-      if (filePathRelease) {
-        await filePathRelease()
-      }
-    }
-    return Promise.resolve()
-  }
-
   const poll = async () => {
     const filePaths = await listFilesInDirectory(baseDir, filenamePattern)
     const fileInfos: { timestamp: number; filePath: string; data: unknown }[] =
       []
     for (const filePath of filePaths) {
-      await pollFile(fileInfos, filePath)
+      await pollFile(fileInfos, filePath, fileType)
     }
     fileInfos.sort((a, b) => a.timestamp - b.timestamp)
     for (const { filePath, data } of fileInfos) {

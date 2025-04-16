@@ -3,23 +3,23 @@ import type TheaterEventBusService from '@test/domain/theater/event-bus/theater-
 import TheaterEventName from '@test/domain/theater/event-bus/theater-event-name.js'
 
 export default class BookingService {
-  readonly #eventBus: TheaterEventBusService
+  readonly #bus: TheaterEventBusService
   readonly #logger: Logger
 
-  constructor(logger: Logger, eventBus: TheaterEventBusService) {
+  constructor(logger: Logger, bus: TheaterEventBusService) {
     this.#logger = logger
-    this.#eventBus = eventBus
+    this.#bus = bus
   }
 
   async requestBooking(numberOfSeats: number): Promise<void> {
     this.#logger.info(`booking requested with ${numberOfSeats} seats!`)
-    await this.#eventBus.sendAndWait(
+    await this.#bus.sendAndWait(
       TheaterEventName.RESERVE_INVENTORY,
       TheaterEventName.INVENTORY_RESERVED,
       TheaterEventName.RESERVE_INVENTORY_ERROR,
       numberOfSeats,
     )
-    await this.#eventBus.sendAndWait(
+    await this.#bus.sendAndWait(
       TheaterEventName.PRINT_TICKET,
       TheaterEventName.TICKET_PRINTED,
       TheaterEventName.PRINT_TICKET_ERROR,

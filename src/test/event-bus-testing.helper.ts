@@ -1,14 +1,9 @@
 import { expect } from '@jest/globals'
-import type { BaseEventBusService } from '@main/base-event-bus.service.js'
-import { pinoLogger } from '@test/infra/logger/pino/pino-logger.js'
-import pretty from 'pino-pretty'
+import type { BaseEventBusService } from '@main/domain/event-bus/base-event-bus.service.js'
 
-export const getTestLogger = () =>
-  pinoLogger(pretty({ sync: true, minimumLevel: 'fatal' }))
-
-export const testEventBus = async (eventBus: BaseEventBusService) => {
+export const testEventBus = async (bus: BaseEventBusService) => {
   // Given
-  await eventBus.start()
+  await bus.start()
   type Event = { name: string; data: unknown }
   const eventsToSend: Event[] = [
     {
@@ -32,15 +27,15 @@ export const testEventBus = async (eventBus: BaseEventBusService) => {
       }
       eventHandlers.push(eventHandler)
       if (index === 0) {
-        eventBus.once(name, eventHandlers[index])
+        bus.once(name, eventHandlers[index])
       } else {
-        eventBus.on(name, eventHandlers[index])
+        bus.on(name, eventHandlers[index])
       }
     }
   })
   // When
   for (const { name, data } of eventsToSend) {
-    eventBus.send(name, data)
+    bus.send(name, data)
   }
   await promise
   // Then
@@ -54,6 +49,6 @@ export const testEventBus = async (eventBus: BaseEventBusService) => {
     name: 'hello',
   })
   for (const [index, { name }] of eventsToSend.entries()) {
-    eventBus.off(name, eventHandlers[index])
+    bus.off(name, eventHandlers[index])
   }
 }

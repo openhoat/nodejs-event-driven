@@ -16,7 +16,7 @@ const config: JestConfig = {
     '^@main/(.*).js$': '<rootDir>/src/main/$1',
     '^@test/(.*).js$': '<rootDir>/src/test/$1',
   },
-  rootDir: '../..',
+  rootDir: '.',
   roots: ['<rootDir>/src'],
   preset: 'ts-jest',
   setupFiles: ['<rootDir>/src/test/jest-setup.ts'],

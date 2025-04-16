@@ -40,17 +40,14 @@
   },
   "scripts": {
     "build": "wireit",
-    "build:all": "wireit",
-    "build:test": "wireit",
     "build:transpile": "wireit",
     "build:transpile:aliases": "wireit",
-    "build:transpile:test": "wireit",
-    "build:transpile:aliases:test": "wireit",
     "check": "wireit",
     "check:fix": "wireit",
     "clean": "wireit",
     "clean:all": "wireit",
     "clean:npm": "wireit",
+    "clean:npm:cache": "wireit",
     "clean:ts": "wireit",
     "clean:wireit": "rimraf -v .wireit",
     "dev": "wireit",
@@ -71,12 +68,6 @@
     "build": {
       "dependencies": ["build:transpile", "build:transpile:aliases"]
     },
-    "build:all": {
-      "dependencies": ["build", "build:test"]
-    },
-    "build:test": {
-      "dependencies": ["build:transpile:test", "build:transpile:aliases:test"]
-    },
     "build:transpile": {
       "command": "tsc",
       "files": ["src/main/**/*.ts", "*.json"],
@@ -90,21 +81,6 @@
       "command": "tsc-alias",
       "dependencies": ["build:transpile"]
     },
-    "build:transpile:test": {
-      "command": "tsc -p tsconfig.test.build.json",
-      "dependencies": ["build:transpile"],
-      "files": ["src/**", "*.json", "*.ts", "*.yaml"],
-      "output": ["lib/**"],
-      "env": {
-        "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
-      },
-      "clean": "if-file-deleted"
-    },
-    "build:transpile:aliases:test": {
-      "command": "tsc-alias",
-      "dependencies": ["build:transpile:test"],
-      "files": ["lib/**"]
-    },
     "check": {
       "command": "biome check .",
       "files": ["src/**", "*.json", "*.ts", "*.yaml"],
@@ -116,7 +92,7 @@
       "output": []
     },
     "clean": {
-      "dependencies": ["clean:dist", "clean:lib", "clean:ts", "clean:npm:cache"]
+      "dependencies": ["clean:dist", "clean:lib", "clean:ts"]
     },
     "clean:all": {
       "dependencies": ["clean", "clean:npm", "clean:wireit"]
@@ -132,7 +108,7 @@
       "dependencies": ["clean:npm:cache"]
     },
     "clean:npm:cache": {
-      "command": "rimraf -v '**/.npm'"
+      "command": "rimraf -v -g '**/.npm'"
     },
     "clean:ts": {
       "command": "rimraf -v -g '**/*.tsbuildinfo'"
@@ -167,14 +143,14 @@
       "output": ["dist/package/**"]
     },
     "test": {
-      "command": "jest -c src/test/jest.config.ts",
+      "command": "jest",
       "files": ["src/**", "*.json", "*.ts", "*.yaml"],
       "env": {
         "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
       }
     },
     "test:cover": {
-      "command": "jest --coverage -c src/test/jest.config.ts",
+      "command": "jest --coverage",
       "files": ["src/**", "*.json", "*.ts", "*.yaml"],
       "env": {
         "NODE_OPTIONS": "--experimental-vm-modules --no-deprecation --no-warnings"
@@ -187,7 +163,7 @@
       }
     },
     "validate": {
-      "dependencies": ["build:all", "check", "test:cover"]
+      "dependencies": ["build", "check", "test:cover"]
     }
   },
   "dependencies": {

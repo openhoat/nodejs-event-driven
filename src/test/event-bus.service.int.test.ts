@@ -1,18 +1,20 @@
+import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
-import type { BaseEventBusService } from '@main/base-event-bus.service.js'
-import EventBusService from '@main/event-bus.service.js'
-import FsEventBusService, {
+import { afterAll, afterEach, describe, expect, test } from '@jest/globals'
+import type { BaseEventBusService } from '@main/domain/event-bus/base-event-bus.service.js'
+import { createEventBusService } from '@main/event-bus.service.js'
+import {
+  FsEventBusService,
   type FsEventBusServiceConfig,
 } from '@main/infra/event-bus/fs/fs-event-bus.service.js'
 import type { MemoryEventBusServiceConfig } from '@main/infra/event-bus/memory/memory-event-bus.service.js'
 import type { RabbitmqEventBusServiceConfig } from '@main/infra/event-bus/rabbitmq/rabbitmq-event-bus.service.js'
 import type { RedisEventBusServiceConfig } from '@main/infra/event-bus/redis/redis-event-bus.service.js'
-import { getTestLogger, testEventBus } from '@test/event-bus-test.helper.js'
+import { testEventBus } from '@test/event-bus-testing.helper.js'
 import { baseDir } from '@test/util/base-dir.js'
 import { waitFor } from '@test/util/helper.js'
 import { isPortOpen } from '@test/util/network-helper.js'
-import { rimraf } from 'rimraf'
+import { getTestLogger } from '@test/util/testing-logger.js'
 
 type TestSpec =
   | ({
@@ -31,17 +33,34 @@ type TestSpec =
 describe('integration testss', () => {
   describe('infra - event bus', () => {
     describe('EventBusService', () => {
-      let eventBus: BaseEventBusService
+      let bus: BaseEventBusService
       afterEach(async () => {
-        if (eventBus) {
-          await eventBus.stop()
+        if (bus) {
+          await bus.stop()
         }
       })
       describe('all implementations', () => {
         const dataRootDir = join(baseDir, 'tmp/events')
-        beforeEach(async () => {
-          await rimraf(dataRootDir)
-          await rimraf(FsEventBusService.defaultDataRootDir)
+        const cleanIfFs = async (spec?: TestSpec) => {
+          if (spec && spec.type !== 'fs') {
+            return Promise.resolve()
+          }
+          try {
+            await rm(dataRootDir, { recursive: true, force: true })
+          } catch (err) {
+            console.warn(err)
+          }
+          try {
+            await rm(FsEventBusService.defaultDataRootDir, {
+              recursive: true,
+              force: true,
+            })
+          } catch (err) {
+            console.warn(err)
+          }
+        }
+        afterAll(async () => {
+          await cleanIfFs()
         })
         const testcases: { spec: TestSpec }[] = [
           { spec: { type: 'memory' } },
@@ -58,31 +77,39 @@ describe('integration testss', () => {
           { spec: { type: 'redis' } },
           { spec: { type: 'rabbitmq' } },
         ]
-        const isServerAvailable = async (spec: TestSpec) => {
+        const testShouldSkip = async (spec: TestSpec) => {
+          let portOpen = false
           switch (spec.type) {
             case 'redis':
-              return isPortOpen(6379, { timeout: 500 })
+              portOpen = await isPortOpen(6379, { timeout: 500 })
+              break
             case 'rabbitmq':
-              return isPortOpen(5672, { timeout: 500 })
-            default:
-              return true
+              portOpen = await isPortOpen(5672, { timeout: 500 })
+              break
+            case 'memory':
+            case 'fs':
+              portOpen = true
           }
+          if (!portOpen) {
+            console.warn(
+              `Skipping test because ${spec.type} port is not opened`,
+            )
+          }
+          return !portOpen
         }
         test.each(testcases)(
           'should receive messages given $spec',
           async ({ spec }) => {
             // Given
-            if (!(await isServerAvailable(spec))) {
-              console.warn(
-                `Skipping test because ${spec.type} port is not opened`,
-              )
+            await cleanIfFs(spec)
+            if (await testShouldSkip(spec)) {
               return
             }
-            eventBus = new EventBusService({
+            bus = createEventBusService({
               ...spec,
               logger: getTestLogger(),
             })
-            await testEventBus(eventBus)
+            await testEventBus(bus)
           },
         )
         describe('sendAndWait', () => {
@@ -90,27 +117,26 @@ describe('integration testss', () => {
             'should send a message and wait for response given $spec',
             async ({ spec }) => {
               // Given
-              if (!(await isServerAvailable(spec))) {
-                console.warn(
-                  `Skipping test because ${spec.type} port is not opened`,
-                )
+              await cleanIfFs(spec)
+              if (await testShouldSkip(spec)) {
                 return
               }
-              eventBus = new EventBusService({
+              bus = createEventBusService({
                 ...spec,
                 logger: getTestLogger(),
               })
-              await eventBus.start()
-              eventBus.once('foo', (data) => {
+              await bus.start()
+              bus.once('foo', (data: unknown) => {
                 expect(data).toBe('bar')
-                eventBus.send('hello', 'world!')
+                bus.send('hello', 'world!')
               })
               // When
-              const response = await eventBus.sendAndWait(
+              const response = await bus.sendAndWait(
                 'foo',
                 'hello',
                 'oops',
                 'bar',
+                { timeout: 10000 },
               )
               // Then
               expect(response).toBe('world!')
@@ -120,30 +146,125 @@ describe('integration testss', () => {
             'should send a message and wait for error given $spec',
             async ({ spec }) => {
               // Given
-              if (!(await isServerAvailable(spec))) {
-                console.warn(
-                  `Skipping test because ${spec.type} port is not opened`,
-                )
+              await cleanIfFs(spec)
+              if (await testShouldSkip(spec)) {
                 return
               }
               const expectedError = new Error('bad things happened!')
-              eventBus = new EventBusService({
+              bus = createEventBusService({
                 ...spec,
                 logger: getTestLogger(),
               })
-              await eventBus.start()
-              eventBus.once('foo', (data) => {
+              await bus.start()
+              bus.once('foo', (data: unknown) => {
                 expect(data).toBe('bar')
-                eventBus.send('oops', 'bad things happened!')
+                bus.send('oops', 'bad things happened!')
               })
               // When
-              const promise = eventBus.sendAndWait(
-                'foo',
-                'hello',
-                'oops',
-                'bar',
-              )
+              const promise = bus.sendAndWait('foo', 'hello', 'oops', 'bar', {
+                timeout: 10000,
+              })
               // Then
+              await expect(promise).rejects.toStrictEqual(expectedError)
+            },
+          )
+          test.each(testcases)(
+            'should throw a timeout error given given $spec and timeout has expired',
+            async ({ spec }) => {
+              // Given
+              await cleanIfFs(spec)
+              if (await testShouldSkip(spec)) {
+                return
+              }
+              if (spec.type === 'memory' && !spec.eventBusMemoryEmitDelay) {
+                return
+              }
+              bus = createEventBusService({
+                ...spec,
+                logger: getTestLogger(),
+              })
+              await bus.start()
+              bus.once('foo', (data: unknown) => {
+                expect(data).toBe('bar')
+                bus.send('hello', 'world!')
+              })
+              const expectedErrorMessage = 'Timeout expired!'
+              const expectedError = new Error(expectedErrorMessage)
+              // When
+              const promise = bus.sendAndWait('foo', 'hello', 'oops', 'bar', {
+                timeout: 1,
+              })
+              // Then
+              await expect(promise).rejects.toStrictEqual(expectedError)
+            },
+          )
+        })
+        describe('waitFor', () => {
+          test.each(testcases)(
+            'should wait for a message given $spec',
+            async ({ spec }) => {
+              // Given
+              await cleanIfFs(spec)
+              if (await testShouldSkip(spec)) {
+                return
+              }
+              bus = createEventBusService({
+                ...spec,
+                logger: getTestLogger(),
+              })
+              await bus.start()
+              // When
+              const promise = bus.waitFor('foo')
+              // Then
+              setTimeout(() => {
+                bus.send('foo', 'bar')
+              }, 1)
+              await expect(promise).resolves.toBe('bar')
+            },
+          )
+          test.each(testcases)(
+            'should wait for a message given $spec and a timeout',
+            async ({ spec }) => {
+              // Given
+              await cleanIfFs(spec)
+              if (await testShouldSkip(spec)) {
+                return
+              }
+              bus = createEventBusService({
+                ...spec,
+                logger: getTestLogger(),
+              })
+              await bus.start()
+              // When
+              const promise = bus.waitFor('foo', { timeout: 5000 })
+              // Then
+              setTimeout(() => {
+                bus.send('foo', 'bar')
+              }, 1)
+              await expect(promise).resolves.toBe('bar')
+            },
+          )
+          test.each(testcases)(
+            'should fail waiting for a message given $spec and a timeout that expired',
+            async ({ spec }) => {
+              // Given
+              await cleanIfFs(spec)
+              if (await testShouldSkip(spec)) {
+                return
+              }
+              bus = createEventBusService({
+                ...spec,
+                logger: getTestLogger(),
+              })
+              await bus.start()
+              const expectedErrorMessage = 'Timeout expired!'
+              const expectedError = new Error(expectedErrorMessage)
+              // When
+              const promise = bus.waitFor('foo', { timeout: 1 })
+              // Then
+              setTimeout(() => {
+                bus.send('foo', 'bar')
+              }, 1)
               await expect(promise).rejects.toStrictEqual(expectedError)
             },
           )
@@ -152,15 +273,15 @@ describe('integration testss', () => {
       describe('fs', () => {
         test('should do nothing when stop twice given a fs event bus', async () => {
           // Given
-          eventBus = new EventBusService({
+          bus = createEventBusService({
             logger: getTestLogger(),
             eventBusFsPollingDelayMs: 100,
             type: 'fs',
           })
-          await eventBus.start()
+          await bus.start()
           await waitFor(100)
           // When
-          await eventBus.stop()
+          await bus.stop()
         })
       })
     })

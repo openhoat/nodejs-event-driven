@@ -1,5 +1,5 @@
-import EventBusService from '@main/event-bus.service.js'
-import logger from '@test/util/logger.js'
+import { createEventBusService } from '@main/event-bus.service.js'
+import { getLogger } from '@test/logger.js'
 import BookingService from './booking.service.js'
 import InventoryService from './inventory.service.js'
 import NotificationService from './notification.service.js'
@@ -9,18 +9,15 @@ const availableSeats = 4
 const requestedSeats = 4
 
 const run = async () => {
-  const eventBus = new EventBusService({
+  const logger = getLogger()
+  const bus = createEventBusService({
     type: 'memory',
     logger,
   })
-  const inventoryService = new InventoryService(
-    logger,
-    availableSeats,
-    eventBus,
-  )
-  const ticketingService = new TicketingService(logger, eventBus)
-  const notificationService = new NotificationService(logger, eventBus)
-  const bookingService = new BookingService(logger, eventBus)
+  const inventoryService = new InventoryService(logger, availableSeats, bus)
+  const ticketingService = new TicketingService(logger, bus)
+  const notificationService = new NotificationService(logger, bus)
+  const bookingService = new BookingService(logger, bus)
   try {
     await inventoryService.start()
     await ticketingService.start()

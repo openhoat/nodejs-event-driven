@@ -4,13 +4,13 @@ import type TheaterEventBusService from '@test/domain/theater/event-bus/theater-
 import TheaterEventName from '@test/domain/theater/event-bus/theater-event-name.js'
 
 export default class TicketingService implements Service {
-  readonly #eventBus: TheaterEventBusService
+  readonly #bus: TheaterEventBusService
   readonly #logger: Logger
   readonly #printTicketEventlistener: (numberOfSeats: number) => void
 
-  constructor(logger: Logger, eventBus: TheaterEventBusService) {
+  constructor(logger: Logger, bus: TheaterEventBusService) {
     this.#logger = logger
-    this.#eventBus = eventBus
+    this.#bus = bus
     this.#printTicketEventlistener = (numberOfSeats: number) => {
       this.printTicket(numberOfSeats)
     }
@@ -18,22 +18,16 @@ export default class TicketingService implements Service {
 
   printTicket(numberOfSeats: number) {
     this.#logger.info(`ticket printed with ${numberOfSeats} seats!`)
-    this.#eventBus.send(TheaterEventName.TICKET_PRINTED, numberOfSeats)
+    this.#bus.send(TheaterEventName.TICKET_PRINTED, numberOfSeats)
   }
 
   async start() {
-    this.#eventBus.on(
-      TheaterEventName.PRINT_TICKET,
-      this.#printTicketEventlistener,
-    )
+    this.#bus.on(TheaterEventName.PRINT_TICKET, this.#printTicketEventlistener)
     return Promise.resolve()
   }
 
   async stop() {
-    this.#eventBus.off(
-      TheaterEventName.PRINT_TICKET,
-      this.#printTicketEventlistener,
-    )
+    this.#bus.off(TheaterEventName.PRINT_TICKET, this.#printTicketEventlistener)
     return Promise.resolve()
   }
 }

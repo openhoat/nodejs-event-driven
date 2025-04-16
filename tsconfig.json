@@ -25,5 +25,5 @@
     "types": ["node"]
   },
   "include": ["src"],
-  "exclude": ["src/test"]
+  "preset": "jest-preset"
 }

@@ -4,13 +4,13 @@ import type TheaterEventBusService from '@test/domain/theater/event-bus/theater-
 import TheaterEventName from '@test/domain/theater/event-bus/theater-event-name.js'
 
 export default class NotificationService implements Service {
-  readonly #eventBus: TheaterEventBusService
+  readonly #bus: TheaterEventBusService
   readonly #logger: Logger
   readonly #notifyNoMoreSeatEventListener: () => void
 
-  constructor(logger: Logger, eventBus: TheaterEventBusService) {
+  constructor(logger: Logger, bus: TheaterEventBusService) {
     this.#logger = logger
-    this.#eventBus = eventBus
+    this.#bus = bus
     this.#notifyNoMoreSeatEventListener = () => {
       this.notifyNoMoreSeat()
     }
@@ -21,7 +21,7 @@ export default class NotificationService implements Service {
   }
 
   async start() {
-    this.#eventBus.on(
+    this.#bus.on(
       TheaterEventName.RESERVE_INVENTORY_NO_MORE_SEAT,
       this.#notifyNoMoreSeatEventListener,
     )
@@ -29,7 +29,7 @@ export default class NotificationService implements Service {
   }
 
   async stop() {
-    this.#eventBus.off(
+    this.#bus.off(
       TheaterEventName.RESERVE_INVENTORY_NO_MORE_SEAT,
       this.#notifyNoMoreSeatEventListener,
     )
