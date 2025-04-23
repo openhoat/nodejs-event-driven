@@ -30,6 +30,7 @@ describe('integration testss', () => {
         logger,
         type: 'memory',
       })
+      await bus.start()
       const eventNamesToListen = [
         TheaterEventName.RESERVE_INVENTORY,
         TheaterEventName.INVENTORY_RESERVED,
@@ -45,7 +46,6 @@ describe('integration testss', () => {
       }
       bookingService = new BookingService(logger, bus)
       ticketingService = new TicketingService(logger, bus)
-      await bus.start()
       await ticketingService.start()
     })
     beforeEach(() => {

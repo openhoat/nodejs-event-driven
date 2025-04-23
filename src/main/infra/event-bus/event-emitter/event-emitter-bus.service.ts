@@ -66,17 +66,21 @@ export abstract class EventEmitterBusService<E extends string = string>
     let timer: NodeJS.Timeout | null = null
     return new Promise((resolve, reject) => {
       const successListener = (successData: T) => {
-        this.off(errorEventName, errorListener)
+        console.log('successData:', successData)
         if (timer) {
           clearTimeout(timer)
+          timer = null
         }
+        this.off(errorEventName, errorListener)
         resolve(successData)
       }
       const errorListener = (errorMessage: string) => {
-        this.off(successEventName, successListener)
+        console.log('errorMessage:', errorMessage)
         if (timer) {
           clearTimeout(timer)
+          timer = null
         }
+        this.off(successEventName, successListener)
         reject(new Error(errorMessage))
       }
       if (timeout) {

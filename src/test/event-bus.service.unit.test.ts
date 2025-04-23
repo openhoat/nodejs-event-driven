@@ -23,6 +23,7 @@ describe('unit tests', () => {
         createFsEventBusService: jest.Mock
         createRedisEventBusService: jest.Mock
         createRabbitmqEventBusService: jest.Mock
+        createKafkaEventBusService: jest.Mock
         bus: jest.Mocked<BaseEventBusService<string>>
       }
       let createEventBusService: BaseEventBusServiceBuilder<EventBusServiceConfig>
@@ -42,6 +43,7 @@ describe('unit tests', () => {
           createFsEventBusService: jest.fn(),
           createRedisEventBusService: jest.fn(),
           createRabbitmqEventBusService: jest.fn(),
+          createKafkaEventBusService: jest.fn(),
         }
         mockModules([
           [
@@ -67,6 +69,12 @@ describe('unit tests', () => {
                 fakes.createRabbitmqEventBusService,
             },
           ],
+          [
+            '@main/infra/event-bus/kafka/kafka-event-bus.service.js',
+            {
+              createKafkaEventBusService: fakes.createKafkaEventBusService,
+            },
+          ],
         ])
         createEventBusService = (await import('@main/event-bus.service.js'))
           .createEventBusService
@@ -76,6 +84,7 @@ describe('unit tests', () => {
         fakes.createFsEventBusService.mockReturnValue(fakes.bus)
         fakes.createRedisEventBusService.mockReturnValue(fakes.bus)
         fakes.createRabbitmqEventBusService.mockReturnValue(fakes.bus)
+        fakes.createKafkaEventBusService.mockReturnValue(fakes.bus)
       })
       afterEach(() => {
         jest.resetAllMocks()
@@ -88,6 +97,7 @@ describe('unit tests', () => {
         { type: 'fs' },
         { type: 'redis' },
         { type: 'rabbitmq' },
+        { type: 'kafka' },
       ]
       describe.each(testcases)('given event bus type is "$type"', (config) => {
         describe('createEventBusService', () => {
@@ -117,6 +127,14 @@ describe('unit tests', () => {
                 expect(
                   fakes.createRabbitmqEventBusService,
                 ).toHaveBeenCalledWith(config)
+                break
+              case 'kafka':
+                expect(fakes.createKafkaEventBusService).toHaveBeenCalledTimes(
+                  1,
+                )
+                expect(fakes.createKafkaEventBusService).toHaveBeenCalledWith(
+                  config,
+                )
                 break
               default:
                 expect(fakes.createMemoryEventBusService).toHaveBeenCalledTimes(

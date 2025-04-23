@@ -12,7 +12,7 @@ export const testEventBus = async (bus: BaseEventBusService) => {
     },
     {
       name: 'hello',
-      data: 'world',
+      data: 'world!',
     },
   ]
   const receivedEvents: Event[] = []
@@ -45,7 +45,7 @@ export const testEventBus = async (bus: BaseEventBusService) => {
     name: 'foo',
   })
   expect(receivedEvents).toContainEqual({
-    data: 'world',
+    data: 'world!',
     name: 'hello',
   })
   for (const [index, { name }] of eventsToSend.entries()) {

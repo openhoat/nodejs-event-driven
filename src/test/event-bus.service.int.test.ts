@@ -7,6 +7,7 @@ import {
   FsEventBusService,
   type FsEventBusServiceConfig,
 } from '@main/infra/event-bus/fs/fs-event-bus.service.js'
+import type { KafkaEventBusServiceConfig } from '@main/infra/event-bus/kafka/kafka-event-bus.service.js'
 import type { MemoryEventBusServiceConfig } from '@main/infra/event-bus/memory/memory-event-bus.service.js'
 import type { RabbitmqEventBusServiceConfig } from '@main/infra/event-bus/rabbitmq/rabbitmq-event-bus.service.js'
 import type { RedisEventBusServiceConfig } from '@main/infra/event-bus/redis/redis-event-bus.service.js'
@@ -29,6 +30,9 @@ type TestSpec =
   | ({
       type: 'rabbitmq'
     } & Omit<RabbitmqEventBusServiceConfig, 'logger'>)
+  | ({
+      type: 'kafka'
+    } & Omit<KafkaEventBusServiceConfig, 'logger'>)
 
 describe('integration testss', () => {
   describe('infra - event bus', () => {
@@ -62,21 +66,6 @@ describe('integration testss', () => {
         afterAll(async () => {
           await cleanIfFs()
         })
-        const testcases: { spec: TestSpec }[] = [
-          { spec: { type: 'memory' } },
-          { spec: { type: 'memory', eventBusMemoryEmitDelay: 1 } },
-          { spec: { type: 'fs' } },
-          { spec: { type: 'fs', eventBusFsPollingDelayMs: 20 } },
-          {
-            spec: {
-              type: 'fs',
-              eventBusFsBaseDataDir: dataRootDir,
-              eventBusFsPollingDelayMs: 20,
-            },
-          },
-          { spec: { type: 'redis' } },
-          { spec: { type: 'rabbitmq' } },
-        ]
         const testShouldSkip = async (spec: TestSpec) => {
           let portOpen = false
           switch (spec.type) {
@@ -85,6 +74,9 @@ describe('integration testss', () => {
               break
             case 'rabbitmq':
               portOpen = await isPortOpen(5672, { timeout: 500 })
+              break
+            case 'kafka':
+              portOpen = await isPortOpen(9092, { timeout: 500 })
               break
             case 'memory':
             case 'fs':
@@ -97,24 +89,28 @@ describe('integration testss', () => {
           }
           return !portOpen
         }
-        test.each(testcases)(
-          'should receive messages given $spec',
-          async ({ spec }) => {
-            // Given
-            await cleanIfFs(spec)
-            if (await testShouldSkip(spec)) {
-              return
-            }
-            bus = createEventBusService({
-              ...spec,
-              logger: getTestLogger(),
-            })
-            await testEventBus(bus)
-          },
-        )
-        describe('sendAndWait', () => {
-          test.each(testcases)(
-            'should send a message and wait for response given $spec',
+        const testcases: Record<string, Omit<TestSpec, 'type'>[]> = {
+          memory: [{}, { eventBusMemoryEmitDelay: 1 }],
+          fs: [
+            {},
+            { eventBusFsPollingDelayMs: 20 },
+            {
+              eventBusFsBaseDataDir: dataRootDir,
+              eventBusFsPollingDelayMs: 20,
+            },
+          ],
+          redis: [{}],
+          rabbitmq: [{}],
+          kafka: [{}],
+        }
+        describe.each(Object.keys(testcases))('%s', (type) => {
+          const implementationTestcases: { spec: TestSpec }[] = testcases[
+            type
+          ].map((spec) => ({
+            spec: { ...spec, type: type as TestSpec['type'] },
+          }))
+          test.each(implementationTestcases)(
+            'should receive messages given $spec',
             async ({ spec }) => {
               // Given
               await cleanIfFs(spec)
@@ -125,149 +121,157 @@ describe('integration testss', () => {
                 ...spec,
                 logger: getTestLogger(),
               })
-              await bus.start()
-              bus.once('foo', (data: unknown) => {
-                expect(data).toBe('bar')
-                bus.send('hello', 'world!')
-              })
-              // When
-              const response = await bus.sendAndWait(
-                'foo',
-                'hello',
-                'oops',
-                'bar',
-                { timeout: 10000 },
-              )
-              // Then
-              expect(response).toBe('world!')
+              await testEventBus(bus)
             },
           )
-          test.each(testcases)(
-            'should send a message and wait for error given $spec',
-            async ({ spec }) => {
-              // Given
-              await cleanIfFs(spec)
-              if (await testShouldSkip(spec)) {
-                return
-              }
-              const expectedError = new Error('bad things happened!')
-              bus = createEventBusService({
-                ...spec,
-                logger: getTestLogger(),
-              })
-              await bus.start()
-              bus.once('foo', (data: unknown) => {
-                expect(data).toBe('bar')
-                bus.send('oops', 'bad things happened!')
-              })
-              // When
-              const promise = bus.sendAndWait('foo', 'hello', 'oops', 'bar', {
-                timeout: 10000,
-              })
-              // Then
-              await expect(promise).rejects.toStrictEqual(expectedError)
-            },
-          )
-          test.each(testcases)(
-            'should throw a timeout error given given $spec and timeout has expired',
-            async ({ spec }) => {
-              // Given
-              await cleanIfFs(spec)
-              if (await testShouldSkip(spec)) {
-                return
-              }
-              if (spec.type === 'memory' && !spec.eventBusMemoryEmitDelay) {
-                return
-              }
-              bus = createEventBusService({
-                ...spec,
-                logger: getTestLogger(),
-              })
-              await bus.start()
-              bus.once('foo', (data: unknown) => {
-                expect(data).toBe('bar')
-                bus.send('hello', 'world!')
-              })
-              const expectedErrorMessage = 'Timeout expired!'
-              const expectedError = new Error(expectedErrorMessage)
-              // When
-              const promise = bus.sendAndWait('foo', 'hello', 'oops', 'bar', {
-                timeout: 1,
-              })
-              // Then
-              await expect(promise).rejects.toStrictEqual(expectedError)
-            },
-          )
-        })
-        describe('waitFor', () => {
-          test.each(testcases)(
-            'should wait for a message given $spec',
-            async ({ spec }) => {
-              // Given
-              await cleanIfFs(spec)
-              if (await testShouldSkip(spec)) {
-                return
-              }
-              bus = createEventBusService({
-                ...spec,
-                logger: getTestLogger(),
-              })
-              await bus.start()
-              // When
-              const promise = bus.waitFor('foo')
-              // Then
-              setTimeout(() => {
+          describe('sendAndWait', () => {
+            test.each(implementationTestcases)(
+              'should send a message and wait for response given $spec',
+              async ({ spec }) => {
+                // Given
+                await cleanIfFs(spec)
+                if (await testShouldSkip(spec)) {
+                  return
+                }
+                bus = createEventBusService({
+                  ...spec,
+                  logger: getTestLogger(),
+                })
+                await bus.start()
+                bus.once('foo', (data: unknown) => {
+                  expect(data).toBe('bar')
+                  bus.send('hello', 'world!')
+                })
+                // When
+                const response = await bus.sendAndWait(
+                  'foo',
+                  'hello',
+                  'oops',
+                  'bar',
+                  { timeout: 10000 },
+                )
+                // Then
+                expect(response).toBe('world!')
+              },
+            )
+            test.each(implementationTestcases)(
+              'should send a message and wait for error given $spec',
+              async ({ spec }) => {
+                // Given
+                await cleanIfFs(spec)
+                if (await testShouldSkip(spec)) {
+                  return
+                }
+                const expectedError = new Error('bad things happened!')
+                bus = createEventBusService({
+                  ...spec,
+                  logger: getTestLogger(),
+                })
+                await bus.start()
+                bus.once('foo', (data: unknown) => {
+                  expect(data).toBe('bar')
+                  bus.send('oops', 'bad things happened!')
+                })
+                // When
+                const promise = bus.sendAndWait('foo', 'hello', 'oops', 'bar', {
+                  timeout: 10000,
+                })
+                // Then
+                await expect(promise).rejects.toStrictEqual(expectedError)
+              },
+            )
+            test.each(implementationTestcases)(
+              'should throw a timeout error given $spec and timeout has expired',
+              async ({ spec }) => {
+                // Given
+                await cleanIfFs(spec)
+                if (await testShouldSkip(spec)) {
+                  return
+                }
+                if (spec.type === 'memory' && !spec.eventBusMemoryEmitDelay) {
+                  return
+                }
+                bus = createEventBusService({
+                  ...spec,
+                  logger: getTestLogger(),
+                })
+                await bus.start()
+                const expectedErrorMessage = 'Timeout expired!'
+                const expectedError = new Error(expectedErrorMessage)
+                // When
+                const promise = bus.sendAndWait('foo', 'hello', 'oops', 'bar', {
+                  timeout: 10,
+                })
+                // Then
+                await expect(promise).rejects.toStrictEqual(expectedError)
+              },
+            )
+          })
+          describe('waitFor', () => {
+            test.each(implementationTestcases)(
+              'should wait for a message given $spec',
+              async ({ spec }) => {
+                // Given
+                await cleanIfFs(spec)
+                if (await testShouldSkip(spec)) {
+                  return
+                }
+                bus = createEventBusService({
+                  ...spec,
+                  logger: getTestLogger(),
+                })
+                await bus.start()
+                // When
+                const promise = bus.waitFor('foo')
+                // Then
+                process.nextTick(() => {
+                  bus.send('foo', 'bar')
+                })
+                await expect(promise).resolves.toBe('bar')
+              },
+            )
+            test.each(implementationTestcases)(
+              'should wait for a message given $spec and a timeout',
+              async ({ spec }) => {
+                // Given
+                await cleanIfFs(spec)
+                if (await testShouldSkip(spec)) {
+                  return
+                }
+                bus = createEventBusService({
+                  ...spec,
+                  logger: getTestLogger(),
+                })
+                await bus.start()
+                // When
+                const promise = bus.waitFor('foo', { timeout: 5000 })
+                // Then
                 bus.send('foo', 'bar')
-              }, 1)
-              await expect(promise).resolves.toBe('bar')
-            },
-          )
-          test.each(testcases)(
-            'should wait for a message given $spec and a timeout',
-            async ({ spec }) => {
-              // Given
-              await cleanIfFs(spec)
-              if (await testShouldSkip(spec)) {
-                return
-              }
-              bus = createEventBusService({
-                ...spec,
-                logger: getTestLogger(),
-              })
-              await bus.start()
-              // When
-              const promise = bus.waitFor('foo', { timeout: 5000 })
-              // Then
-              setTimeout(() => {
-                bus.send('foo', 'bar')
-              }, 1)
-              await expect(promise).resolves.toBe('bar')
-            },
-          )
-          test.each(testcases)(
-            'should fail waiting for a message given $spec and a timeout that expired',
-            async ({ spec }) => {
-              // Given
-              await cleanIfFs(spec)
-              if (await testShouldSkip(spec)) {
-                return
-              }
-              bus = createEventBusService({
-                ...spec,
-                logger: getTestLogger(),
-              })
-              await bus.start()
-              const expectedErrorMessage = 'Timeout expired!'
-              const expectedError = new Error(expectedErrorMessage)
-              // When
-              const promise = bus.waitFor('foo', { timeout: 1 })
-              // Then
-              setTimeout(() => {
-                bus.send('foo', 'bar')
-              }, 1)
-              await expect(promise).rejects.toStrictEqual(expectedError)
-            },
-          )
+                await expect(promise).resolves.toBe('bar')
+              },
+            )
+            test.each(implementationTestcases)(
+              'should fail waiting for a message given $spec and a timeout that expired',
+              async ({ spec }) => {
+                // Given
+                await cleanIfFs(spec)
+                if (await testShouldSkip(spec)) {
+                  return
+                }
+                bus = createEventBusService({
+                  ...spec,
+                  logger: getTestLogger(),
+                })
+                await bus.start()
+                const expectedErrorMessage = 'Timeout expired!'
+                const expectedError = new Error(expectedErrorMessage)
+                // When
+                const promise = bus.waitFor('foo', { timeout: 1 })
+                // Then
+                await expect(promise).rejects.toStrictEqual(expectedError)
+              },
+            )
+          })
         })
       })
       describe('fs', () => {

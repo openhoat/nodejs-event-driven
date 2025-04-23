@@ -19,7 +19,7 @@ export class RabbitmqEventBusService<
 
   readonly #logger?: Logger
   #connection: ChannelModel | null = null
-  readonly #registeredChannel: Record<E, Channel> = {} as Record<E, Channel>
+  readonly #registeredChannel: Map<E, Channel> = new Map()
   readonly #url: string
 
   constructor(config: RabbitmqEventBusServiceConfig) {
@@ -36,22 +36,25 @@ export class RabbitmqEventBusService<
     return connection
   }
 
-  async #closeRegisteredChannels() {
-    await Promise.all(
-      (Object.keys(this.#registeredChannel) as E[]).map(async (eventName) => {
-        const channel = this.#registeredChannel[eventName]
-        await channel.cancel(eventName)
-        this.off(eventName)
-      }),
-    )
-  }
-
   async #createChannel(eventName: E) {
     const connection = this.#checkConnection()
     const channel = await connection.createChannel()
-    this.#registeredChannel[eventName] = channel
+    this.#registeredChannel.set(eventName, channel)
     await channel.assertQueue(eventName, { durable: false })
     return channel
+  }
+
+  async #closeChannel(eventName: E, channel: Channel) {
+    try {
+      await channel.cancel(eventName)
+      await channel.close()
+    } catch (err) {
+      const error = err as Error
+      this.#logger?.warn(
+        `Error while trying to close channel for event: ${eventName}: ${error.message}`,
+      )
+      this.errorListener?.(err)
+    }
   }
 
   async #consumeQueue<T>(
@@ -99,19 +102,13 @@ export class RabbitmqEventBusService<
   }
 
   off(eventName: E) {
-    const channel = this.#registeredChannel[eventName]
+    const channel = this.#registeredChannel.get(eventName)
     if (!channel) {
       return
     }
-    delete this.#registeredChannel[eventName]
+    this.#registeredChannel.delete(eventName)
     this.#logger?.debug(`closing channel ${eventName}`)
-    void channel.close().catch((err) => {
-      const error = err as Error
-      this.#logger?.warn(
-        `Error while trying to close channel for event: ${eventName}: ${error.message}`,
-      )
-      this.errorListener?.(err)
-    })
+    void this.#closeChannel(eventName, channel)
   }
 
   send(eventName: E, data?: unknown) {
@@ -134,7 +131,9 @@ export class RabbitmqEventBusService<
   }
 
   async stop() {
-    await this.#closeRegisteredChannels()
+    for (const [eventName, channel] of this.#registeredChannel.entries()) {
+      await this.#closeChannel(eventName, channel)
+    }
     const connection = this.#connection
     if (connection) {
       await connection.close()

@@ -98,10 +98,12 @@ export class RedisEventBusService<
 
   async start() {
     const { createClient } = await import('redis')
-    this.#redisPublisher = createClient(this.#redisConfig)
-    this.#redisSubscriber = createClient(this.#redisConfig)
-    await this.#redisPublisher.connect()
-    await this.#redisSubscriber.connect()
+    const redisPublisher: RedisClientType = createClient(this.#redisConfig)
+    await redisPublisher.connect()
+    this.#redisPublisher = redisPublisher
+    const redisSubscriber: RedisClientType = createClient(this.#redisConfig)
+    await redisSubscriber.connect()
+    this.#redisSubscriber = redisSubscriber
   }
 
   async stop() {

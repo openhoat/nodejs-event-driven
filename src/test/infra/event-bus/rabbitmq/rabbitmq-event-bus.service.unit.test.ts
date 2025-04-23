@@ -106,6 +106,8 @@ describe('unit tests', () => {
             await bus.stop()
             expect(fakeChannel.cancel).toHaveBeenCalledTimes(1)
             expect(fakeChannel.cancel).toHaveBeenCalledWith(eventName)
+            expect(fakeChannel.close).toHaveBeenCalledTimes(1)
+            expect(fakeChannel.close).toHaveBeenCalledWith()
           })
           test('should listen to "foo" events given a null message', async () => {
             // Given
@@ -146,6 +148,8 @@ describe('unit tests', () => {
             await bus.stop()
             expect(fakeChannel.cancel).toHaveBeenCalledTimes(1)
             expect(fakeChannel.cancel).toHaveBeenCalledWith(eventName)
+            expect(fakeChannel.close).toHaveBeenCalledTimes(1)
+            expect(fakeChannel.close).toHaveBeenCalledWith()
           })
           test('should fail given connection is not initialized', async () => {
             // Given
@@ -181,7 +185,10 @@ describe('unit tests', () => {
             await expect(errorPromise).rejects.toStrictEqual(expectedError)
             expect(fakeChannel.consume).toHaveBeenCalledTimes(0)
             await bus.stop()
-            expect(fakeChannel.cancel).toHaveBeenCalledTimes(0)
+            expect(fakeChannel.cancel).toHaveBeenCalledTimes(1)
+            expect(fakeChannel.cancel).toHaveBeenCalledWith(eventName)
+            expect(fakeChannel.close).toHaveBeenCalledTimes(1)
+            expect(fakeChannel.close).toHaveBeenCalledWith()
           })
         })
         describe('once', () => {
@@ -225,6 +232,8 @@ describe('unit tests', () => {
             expect(fakeChannel.cancel).toHaveBeenCalledTimes(2)
             expect(fakeChannel.cancel).toHaveBeenNthCalledWith(1, eventName)
             expect(fakeChannel.cancel).toHaveBeenNthCalledWith(2, eventName)
+            expect(fakeChannel.close).toHaveBeenCalledTimes(1)
+            expect(fakeChannel.close).toHaveBeenCalledWith()
           })
         })
         describe('off', () => {
@@ -241,6 +250,9 @@ describe('unit tests', () => {
             // When
             bus.off(eventName, listener)
             // Then
+            await waitFor(10)
+            expect(fakeChannel.cancel).toHaveBeenCalledTimes(1)
+            expect(fakeChannel.cancel).toHaveBeenCalledWith(eventName)
             expect(fakeChannel.close).toHaveBeenCalledTimes(1)
             expect(fakeChannel.close).toHaveBeenCalledWith()
           })
@@ -270,9 +282,12 @@ describe('unit tests', () => {
             // When
             bus.off(eventName, listener)
             // Then
+            await expect(errorPromise).rejects.toStrictEqual(expectedError)
+            await waitFor(10)
+            expect(fakeChannel.cancel).toHaveBeenCalledTimes(1)
+            expect(fakeChannel.cancel).toHaveBeenCalledWith(eventName)
             expect(fakeChannel.close).toHaveBeenCalledTimes(1)
             expect(fakeChannel.close).toHaveBeenCalledWith()
-            await expect(errorPromise).rejects.toStrictEqual(expectedError)
           })
         })
         describe('send', () => {
