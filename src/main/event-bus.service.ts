@@ -8,6 +8,10 @@ import {
   createFsEventBusService,
 } from '@main/infra/event-bus/fs/fs-event-bus.service.js'
 import {
+  type KafkaEventBusServiceConfig,
+  createKafkaEventBusService,
+} from '@main/infra/event-bus/kafka/kafka-event-bus.service.js'
+import {
   type MemoryEventBusServiceConfig,
   createMemoryEventBusService,
 } from '@main/infra/event-bus/memory/memory-event-bus.service.js'
@@ -33,6 +37,9 @@ export type EventBusServiceConfig =
   | ({
       type: 'rabbitmq'
     } & RabbitmqEventBusServiceConfig)
+  | ({
+      type: 'kafka'
+    } & KafkaEventBusServiceConfig)
 
 export class EventBusService<
   E extends string = string,
@@ -50,6 +57,9 @@ export class EventBusService<
         break
       case 'rabbitmq':
         this.#eventBusServiceImpl = createRabbitmqEventBusService(config)
+        break
+      case 'kafka':
+        this.#eventBusServiceImpl = createKafkaEventBusService(config)
         break
       default:
         this.#eventBusServiceImpl = createMemoryEventBusService(config)

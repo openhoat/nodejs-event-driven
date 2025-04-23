@@ -194,6 +194,7 @@
   },
   "optionalDependencies": {
     "amqplib": "0.10.7",
+    "kafkajs": "2.2.4",
     "redis": "4.7.0"
   }
 }
