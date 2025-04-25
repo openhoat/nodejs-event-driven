@@ -66,7 +66,6 @@ export abstract class EventEmitterBusService<E extends string = string>
     let timer: NodeJS.Timeout | null = null
     return new Promise((resolve, reject) => {
       const successListener = (successData: T) => {
-        console.log('successData:', successData)
         if (timer) {
           clearTimeout(timer)
           timer = null
@@ -75,7 +74,6 @@ export abstract class EventEmitterBusService<E extends string = string>
         resolve(successData)
       }
       const errorListener = (errorMessage: string) => {
-        console.log('errorMessage:', errorMessage)
         if (timer) {
           clearTimeout(timer)
           timer = null

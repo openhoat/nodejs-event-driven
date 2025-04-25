@@ -5,16 +5,19 @@ import type { Consumer, Kafka, LogEntry } from 'kafkajs'
 
 export type KafkaEventBusServiceConfig = {
   brokers?: string[]
+  clientId?: string
   logger?: Logger
+  topicPrefix?: string
 }
 
 export enum LogLevel {
-  NOTHING = 0,
   ERROR = 1,
   WARN = 2,
   INFO = 4,
   DEBUG = 5,
 }
+
+export const ERROR_MESSAGE_NOT_INITIALIZED = 'Kafka is not initialized!'
 
 export class KafkaEventBusService<
   E extends string = string,
@@ -25,10 +28,7 @@ export class KafkaEventBusService<
   readonly #logger?: Logger
   #kafka: Kafka | null = null
   readonly #consumers: Map<E, Consumer> = new Map()
-  readonly #kafkaConfig: {
-    clientId?: string
-    brokers?: string[]
-  }
+  readonly #kafkaConfig: Omit<KafkaEventBusServiceConfig, 'logger'>
   readonly #logCreator: (logLevel: number) => (entry: LogEntry) => void
 
   constructor(config: KafkaEventBusServiceConfig) {
@@ -55,18 +55,41 @@ export class KafkaEventBusService<
     }
   }
 
+  async #createTopic(eventName: E) {
+    const kafka = this.#kafka
+    if (!kafka) {
+      throw new Error(ERROR_MESSAGE_NOT_INITIALIZED)
+    }
+    const admin = kafka.admin()
+    await admin.connect()
+    await admin.createTopics({
+      topics: [
+        {
+          topic: eventName,
+          numPartitions: 1,
+          replicationFactor: 1,
+        },
+      ],
+    })
+    await admin.disconnect()
+  }
+
   async #consume<T>(eventName: E, listener: (data: T) => void, once = false) {
     const kafka = this.#kafka
     if (!kafka) {
-      throw new Error('Kafka is not initialized!')
+      throw new Error(ERROR_MESSAGE_NOT_INITIALIZED)
     }
+    await this.#createTopic(eventName)
     const consumer = kafka.consumer({
       groupId: eventName,
       allowAutoTopicCreation: true,
     })
     await consumer.connect()
     this.#consumers.set(eventName, consumer)
-    await consumer.subscribe({ topic: eventName, fromBeginning: true })
+    await consumer.subscribe({
+      topic: this.getTopic(eventName),
+      fromBeginning: true,
+    })
     await consumer.run({
       eachMessage: async ({ message }) => {
         if (once) {
@@ -82,15 +105,30 @@ export class KafkaEventBusService<
   async #produce(eventName: E, data?: unknown) {
     const kafka = this.#kafka
     if (!kafka) {
-      throw new Error('Kafka is not initialized!')
+      throw new Error(ERROR_MESSAGE_NOT_INITIALIZED)
     }
+    await this.#createTopic(eventName)
     const producer = kafka.producer({ allowAutoTopicCreation: true })
     await producer.connect()
-    await producer.send({
-      topic: eventName,
-      messages: [{ value: JSON.stringify(data) }],
-    })
-    await producer.disconnect()
+    try {
+      await producer.send({
+        topic: this.getTopic(eventName),
+        messages: [{ value: JSON.stringify(data) }],
+      })
+    } finally {
+      await producer.disconnect()
+    }
+  }
+
+  async #stopConsumer(consumer: Consumer) {
+    await consumer.stop()
+    await consumer.disconnect()
+  }
+
+  getTopic(eventName: E): string {
+    return this.#kafkaConfig.topicPrefix
+      ? `${this.#kafkaConfig.topicPrefix}-${eventName}`
+      : `${eventName}`
   }
 
   on<T>(eventName: E, listener: (data: T) => void) {
@@ -101,11 +139,6 @@ export class KafkaEventBusService<
   once<T>(eventName: E, listener: (data: T) => void) {
     this.#logger?.debug(`register once listener for channel: ${eventName}`)
     void this.#consume(eventName, listener, true)
-  }
-
-  async #stopConsumer(consumer: Consumer) {
-    await consumer.stop()
-    await consumer.disconnect()
   }
 
   off(eventName: E) {
@@ -130,16 +163,15 @@ export class KafkaEventBusService<
       brokers: this.#kafkaConfig.brokers ?? [KafkaEventBusService.DEFAULT_URL],
       clientId:
         this.#kafkaConfig.clientId ?? KafkaEventBusService.DEFAULT_CLIENT_ID,
-      enforceRequestTimeout: false,
     })
   }
 
   async stop() {
-    const consumerEventNames = Object.keys(this.#consumers)
-    for (const eventName of consumerEventNames) {
-      this.off(eventName as E)
-    }
-    return Promise.resolve()
+    await Promise.all(
+      this.#consumers.keys().map((eventName) => {
+        this.off(eventName)
+      }),
+    )
   }
 }
 

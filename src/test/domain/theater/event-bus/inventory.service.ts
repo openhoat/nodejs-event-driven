@@ -1,18 +1,18 @@
+import type { BaseEventBusService } from '@main/domain/event-bus/base-event-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
 import type { Service } from '@main/util/service.js'
-import type TheaterEventBusService from '@test/domain/theater/event-bus/theater-event-bus.service.js'
 import TheaterEventName from '@test/domain/theater/event-bus/theater-event-name.js'
 
 export default class InventoryService implements Service {
   #availableSeats: number
-  readonly #bus: TheaterEventBusService
+  readonly #bus: BaseEventBusService
   readonly #logger: Logger
   readonly #reserveInventoryListener: (numberOfSeats: number) => void
 
   constructor(
     logger: Logger,
     availableSeats: number,
-    bus: TheaterEventBusService,
+    bus: BaseEventBusService,
   ) {
     this.#logger = logger
     this.#availableSeats = availableSeats

@@ -1,14 +1,14 @@
+import type { BaseEventBusService } from '@main/domain/event-bus/base-event-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
 import type { Service } from '@main/util/service.js'
-import type TheaterEventBusService from '@test/domain/theater/event-bus/theater-event-bus.service.js'
 import TheaterEventName from '@test/domain/theater/event-bus/theater-event-name.js'
 
 export default class NotificationService implements Service {
-  readonly #bus: TheaterEventBusService
+  readonly #bus: BaseEventBusService
   readonly #logger: Logger
   readonly #notifyNoMoreSeatEventListener: () => void
 
-  constructor(logger: Logger, bus: TheaterEventBusService) {
+  constructor(logger: Logger, bus: BaseEventBusService) {
     this.#logger = logger
     this.#bus = bus
     this.#notifyNoMoreSeatEventListener = () => {

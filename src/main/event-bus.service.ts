@@ -1,8 +1,4 @@
-import type {
-  BaseEventBusService,
-  BaseEventBusServiceBuilder,
-} from '@main/domain/event-bus/base-event-bus.service.js'
-import { EventEmitterBusService } from '@main/infra/event-bus/event-emitter/event-emitter-bus.service.js'
+import type { BaseEventBusServiceBuilder } from '@main/domain/event-bus/base-event-bus.service.js'
 import {
   type FsEventBusServiceConfig,
   createFsEventBusService,
@@ -41,73 +37,19 @@ export type EventBusServiceConfig =
       type: 'kafka'
     } & KafkaEventBusServiceConfig)
 
-export class EventBusService<
-  E extends string = string,
-> extends EventEmitterBusService<E> {
-  readonly #eventBusServiceImpl: BaseEventBusService
-
-  constructor(config: EventBusServiceConfig) {
-    super(config)
-    switch (config.type) {
-      case 'fs':
-        this.#eventBusServiceImpl = createFsEventBusService(config)
-        break
-      case 'redis':
-        this.#eventBusServiceImpl = createRedisEventBusService(config)
-        break
-      case 'rabbitmq':
-        this.#eventBusServiceImpl = createRabbitmqEventBusService(config)
-        break
-      case 'kafka':
-        this.#eventBusServiceImpl = createKafkaEventBusService(config)
-        break
-      default:
-        this.#eventBusServiceImpl = createMemoryEventBusService(config)
-    }
-  }
-
-  send(eventName: E, data?: unknown) {
-    this.#eventBusServiceImpl.send(eventName, data)
-  }
-
-  on<T>(eventName: E, listener: (data: T) => void) {
-    this.#eventBusServiceImpl.on(eventName, listener)
-  }
-
-  once<T>(eventName: E, listener: (data: T) => void) {
-    this.#eventBusServiceImpl.once(eventName, listener)
-  }
-
-  off<T>(eventName: E, listener: (data: T) => void) {
-    this.#eventBusServiceImpl.off(eventName, listener)
-  }
-
-  sendAndWait<T>(
-    sendEventName: E,
-    successEventName: E,
-    errorEventName: E,
-    data: unknown,
-    options?: { timeout?: number },
-  ): Promise<T> {
-    return this.#eventBusServiceImpl.sendAndWait(
-      sendEventName,
-      successEventName,
-      errorEventName,
-      data,
-      options,
-    )
-  }
-
-  async start() {
-    await this.#eventBusServiceImpl.start()
-  }
-
-  async stop() {
-    await this.#eventBusServiceImpl.stop()
+export const createEventBusService: BaseEventBusServiceBuilder<
+  EventBusServiceConfig
+> = (config) => {
+  switch (config.type) {
+    case 'fs':
+      return createFsEventBusService(config)
+    case 'redis':
+      return createRedisEventBusService(config)
+    case 'rabbitmq':
+      return createRabbitmqEventBusService(config)
+    case 'kafka':
+      return createKafkaEventBusService(config)
+    default:
+      return createMemoryEventBusService(config)
   }
 }
-
-export const createEventBusService: BaseEventBusServiceBuilder<
-  EventBusServiceConfig,
-  EventBusService
-> = (config) => new EventBusService(config)

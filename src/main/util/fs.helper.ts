@@ -24,11 +24,10 @@ export const createDirIfNeeded = async (filePath: string) => {
     await checkIsDir(filePath)
   } catch (err) {
     const error = err as { code?: string }
-    if (error.code === 'ENOENT') {
-      await mkdir(filePath, { recursive: true })
-      return
+    if (error.code !== 'ENOENT') {
+      throw error
     }
-    throw error
+    await mkdir(filePath, { recursive: true })
   }
 }
 
@@ -146,11 +145,10 @@ export const pollFile = async (
     await unlink(filePath)
   } catch (err) {
     const error = err as Error & { code?: string }
-    if (error.code === 'ENOENT') {
-      console.warn(err)
-      return Promise.resolve()
+    if (error.code !== 'ENOENT') {
+      throw err
     }
-    throw err
+    console.warn(err)
   } finally {
     if (filePathRelease) {
       await filePathRelease()
@@ -159,7 +157,7 @@ export const pollFile = async (
   return Promise.resolve()
 }
 
-export const watchFiles = async (config: FileWatcherConfig) => {
+export const watchFiles = (config: FileWatcherConfig) => {
   const {
     baseDir,
     filenamePattern,
@@ -198,7 +196,6 @@ export const watchFiles = async (config: FileWatcherConfig) => {
   timer = setInterval(() => {
     void poll()
   }, pollingDelayMs)
-  void poll()
   return {
     onFile: (listener: (name: string, data: unknown) => void) => {
       fileListener = listener

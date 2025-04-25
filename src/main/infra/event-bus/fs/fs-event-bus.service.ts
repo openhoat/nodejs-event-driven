@@ -72,7 +72,7 @@ export class FsEventBusService<
       filenamePattern: watchPattern,
       pollingDelayMs: this.#pollingDelayMs,
     }
-    const watcher = await watchFiles(watchConfig)
+    const watcher = watchFiles(watchConfig)
     watcher.onFile((filePath, data) => {
       const eventName = basename(dirname(filePath))
       this.logger?.debug(`sending event: ${eventName} with ${String(data)}`)

@@ -1,10 +1,13 @@
 import { fileURLToPath } from 'node:url'
-import type { EventBusServiceConfig } from '@main/event-bus.service.js'
+import type { BaseEventBusService } from '@main/domain/event-bus/base-event-bus.service.js'
+import {
+  type EventBusServiceConfig,
+  createEventBusService,
+} from '@main/event-bus.service.js'
 import type { Logger } from '@main/util/logger.js'
 import { configSpec } from '@test/config.js'
 import BookingService from '@test/domain/theater/event-bus/booking.service.js'
 import InventoryService from '@test/domain/theater/event-bus/inventory.service.js'
-import TheaterEventBusService from '@test/domain/theater/event-bus/theater-event-bus.service.js'
 import TicketingService from '@test/domain/theater/event-bus/ticketing.service.js'
 import {
   type PinoLoggerConfig,
@@ -16,7 +19,7 @@ const availableSeats = 20
 const requestedSeats = 16
 
 export const runTheaterDemo = async (
-  bus: TheaterEventBusService,
+  bus: BaseEventBusService,
   logger: Logger,
 ) => {
   const inventoryService = new InventoryService(logger, availableSeats, bus)
@@ -75,6 +78,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       type: 'memory',
     }
   }
-  const bus = new TheaterEventBusService(eventBusConfig)
+  const bus = createEventBusService(eventBusConfig)
   void runTheaterDemo(bus, logger)
 }

@@ -11,6 +11,7 @@ Features:
 - File system queue
 - Redis queue
 - RabbitMQ
+- Kafka
 
 ### How it works
 
@@ -19,7 +20,9 @@ Simply instantiate an `EventBusService` and use it as an `EventEmitter` to publi
 Example:
 
 ```js
-const bus = new EventBusService({ type: 'memory' })
+import { createEventBusService } from 'nodejs-event-driven'
+
+const bus = createEventBusService({ type: 'memory' })
 await bus.start()
 bus.on('hello', (data) => {
   console.log('data:', data)
@@ -35,7 +38,7 @@ bus.send('hello', 'world!')
     ```
 - Create `index.js`:
     ```js
-    import EventBusService from 'nodejs-event-driven'
+    import { createEventBusService } from 'nodejs-event-driven'
     import pino from 'pino'
     
     /**
@@ -56,7 +59,7 @@ bus.send('hello', 'world!')
         type: 'memory',
         logger,
       }
-      const bus = new EventBusService(config)
+      const bus = createEventBusService(config)
       try {
         await bus.start()
         await new Promise((resolve) => {
@@ -99,13 +102,14 @@ Configuration properties:
     - `fs`: File system.
     - `redis`: Redis queue.
     - `rabbitmq`: RabbitMQ.
-- `logger` (default:no log): Any logger implementation implementing [Logger](https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/src/main/util/logger.ts) interface.
+    - `kafka`: Kafka.
+- `logger` (default: no log): Any logger implementation implementing [Logger](https://raw.githubusercontent.com/openhoat/nodejs-event-driven/refs/heads/main/src/main/util/logger.ts) interface.
 
 > All others properties depend on `type` value, matching the following specs:
 
 #### `memory`
 
-- `eventBusMemoryEmitDelay` (default:0): Duration used to wait (in ms) before sending events.
+- `eventBusMemoryEmitDelay` (default: 0): Duration used to wait (in ms) before sending events.
 
 #### `fs`
 
@@ -127,6 +131,12 @@ Configuration properties:
 
 - `url` (default: rabbitmq default): RabbitMQ host URL to connect with.
 
+#### `kafka`
+
+- `brokers` (default: ['localhost:9092']): Brokers to connect to.
+- `clientId` (default: 'app'): Client ID.
+- `topicPrefix`: if set, used as a topic prefix (resulting topic becomes `${prefix}-$[topic}`).
+
 ### Prerequisite
 
 - Install `redis` NPM dependency to be able to use Redis with `nodejs-event-driven`.
@@ -137,7 +147,11 @@ Configuration properties:
   ```shell
   npm install amqplib
   ```
+- Install `kafkajs` NPM dependency to be able to use Kafka with `nodejs-event-driven`.
+  ```shell
+  npm install kafkajs
+  ```
 
-> `redis` and `amqplib` are declared as optional dependencies in `nodejs-event-driven`.
+> `redis`, `amqplib` and `kafkajs` are declared as optional dependencies in `nodejs-event-driven`.
 
 Enjoy!

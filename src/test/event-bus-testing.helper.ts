@@ -1,17 +1,26 @@
+import { rm } from 'node:fs/promises'
 import { expect } from '@jest/globals'
 import type { BaseEventBusService } from '@main/domain/event-bus/base-event-bus.service.js'
 
-export const testEventBus = async (bus: BaseEventBusService) => {
+export const cleanFs = async (dataRootDir: string) => {
+  try {
+    await rm(dataRootDir, { recursive: true, force: true })
+  } catch (err) {
+    console.warn(err)
+  }
+}
+
+export const testSendingManyEvents = async (bus: BaseEventBusService) => {
   // Given
-  await bus.start()
   type Event = { name: string; data: unknown }
+  const prefix = `${Date.now()}`
   const eventsToSend: Event[] = [
     {
-      name: 'foo',
+      name: `${prefix}-foo`,
       data: 'bar',
     },
     {
-      name: 'hello',
+      name: `${prefix}-hello`,
       data: 'world!',
     },
   ]
@@ -39,15 +48,10 @@ export const testEventBus = async (bus: BaseEventBusService) => {
   }
   await promise
   // Then
-  expect(receivedEvents).toHaveLength(2)
-  expect(receivedEvents).toContainEqual({
-    data: 'bar',
-    name: 'foo',
-  })
-  expect(receivedEvents).toContainEqual({
-    data: 'world!',
-    name: 'hello',
-  })
+  expect(receivedEvents).toHaveLength(eventsToSend.length)
+  for (const eventToSend of eventsToSend) {
+    expect(receivedEvents).toContainEqual(eventToSend)
+  }
   for (const [index, { name }] of eventsToSend.entries()) {
     bus.off(name, eventHandlers[index])
   }
