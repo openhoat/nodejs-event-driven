@@ -32,8 +32,8 @@
   "types": "./lib/main/index.d.ts",
   "packageManager": "pnpm@10.6.4",
   "engines": {
-    "node": "22.14.0",
-    "pnpm": "10.6.4"
+    "node": "^22.0.0",
+    "pnpm": "^10.0.0"
   },
   "volta": {
     "node": "22.14.0",
@@ -54,6 +54,7 @@
     "dev": "wireit",
     "format": "wireit",
     "format:fix": "wireit",
+    "help": "pnpm exec why",
     "pack": "wireit",
     "pack:create": "wireit",
     "pack:untar": "wireit",
@@ -168,10 +169,10 @@
     }
   },
   "dependencies": {
-    "dotenv": "16.4.7",
-    "pino": "9.6.0",
-    "proper-lockfile": "4.1.2",
-    "wireit": "0.14.11"
+    "dotenv": "^16.4.7",
+    "pino": "^9.6.0",
+    "proper-lockfile": "^4.1.2",
+    "wireit": "^0.14.11"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -191,7 +192,8 @@
     "tsc-alias": "1.8.13",
     "tsx": "4.19.3",
     "typescript": "5.8.3",
-    "valibot": "1.0.0"
+    "valibot": "1.0.0",
+    "why": "0.6.2"
   },
   "optionalDependencies": {
     "amqplib": "0.10.7",

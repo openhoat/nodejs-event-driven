@@ -1,0 +1,28 @@
+{
+  "scripts": {
+    "build": "Build all",
+    "build:transpile": "Transpile TypeScript sources",
+    "build:transpile:aliases": "Resolve module aliases in transpiled sources",
+    "check": "Check project format and lint",
+    "check:fix": "Fix project format and lint",
+    "clean": "Clean generated sources of the project",
+    "clean:all": "Clean all about the project",
+    "clean:npm": "Clean installed NPM modules",
+    "clean:npm:cache": "Clean NPM cache",
+    "clean:ts": "Clean TypeScript build info files",
+    "clean:wireit": "Clean Wireit cache",
+    "dev": "Run the project in dev mode",
+    "format": "Check project sources format",
+    "format:fix": "Fix project sources format",
+    "pack": "Create a NPM module flat tree of the project",
+    "pack:create": "Create a NPM module tarball of the project",
+    "pack:untar": "Unpack the NPM module tarball",
+    "prepublishOnly": "Build before publish",
+    "sonar:scan": "Run a SonarQube scan",
+    "start": "Run the project",
+    "test": "Run tests",
+    "test:cover": "Run tests with coverage",
+    "test:cover:open": "Open coverage report",
+    "validate": "Validate project"
+  }
+}
